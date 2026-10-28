@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-file_handler = logging.FileHandler("time_engine.log", mode="w", encoding="utf-8")
+file_handler = logging.FileHandler(f"engine_{time.time()}.log", mode="w", encoding="utf-8")
 file_handler.setLevel(logging.INFO)
 file_formater = logging.Formatter(
     "%(asctime)s | %(levelname)-8s | %(message)s",

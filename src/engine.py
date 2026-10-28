@@ -9,6 +9,7 @@ class Flag(IntEnum):
     ALPHA = 1
     BETA = 2
 
+
 class Engine:
 
     def __init__(self, depth = 2):
@@ -40,7 +41,7 @@ class Engine:
         self._logger = logging.getLogger()
         self._logger.setLevel(logging.INFO)
 
-        file_handler = logging.FileHandler("Engine.log", mode="w", encoding="utf-8")
+        file_handler = logging.FileHandler("../logs/Engine.log", mode="w", encoding="utf-8")
         file_handler.setLevel(logging.INFO)
         file_formater = logging.Formatter(
             "%(asctime)s | %(levelname)-8s | %(funcName)-10s | %(message)s",
@@ -48,7 +49,6 @@ class Engine:
         )
         file_handler.setFormatter(file_formater)
         self._logger.addHandler(file_handler)
-
 
     def evaluate(self, board):
         score = 0
@@ -71,11 +71,10 @@ class Engine:
 
         if board.turn == chess.WHITE:
             best_score = float("-inf")
-            for move in board.legal_moves:
+            for move in self.ordered_moves(board):
                 board.push(move)
                 score = self.minmax(board, self._depth -1, alpha, beta)
                 board.pop()
-                # self._logger.info(f"{move} | {score} | {self._node_cnt}")
                 if score > best_score:
                     best_move = move
                 best_score = max(best_score, score)
@@ -83,7 +82,7 @@ class Engine:
 
         else:
             best_score = float("inf")
-            for move in board.legal_moves:
+            for move in self.ordered_moves(board):
                 board.push(move)
                 score = self.minmax(board, self._depth -1, alpha, beta)
                 board.pop()
@@ -117,7 +116,7 @@ class Engine:
                 return 0
 
             if board.is_checkmate():
-                return (-10000 - (self.depth - depth)) if board.turn == chess.WHITE else (10000 + (self.depth - depth))
+                return (-10000 + (self.depth - depth)) if board.turn == chess.WHITE else (10000 - (self.depth - depth))
 
         # Base Condition
         if depth == 0:
@@ -129,7 +128,7 @@ class Engine:
         # Maximizer
         if board.turn == chess.WHITE:
             best_score = float("-inf")
-            for move in board.legal_moves:
+            for move in self.ordered_moves(board):
                 board.push(move)
                 score = self.minmax(board, depth - 1, alpha, beta)
                 board.pop()
@@ -143,7 +142,7 @@ class Engine:
         # Minimizer
         else:
             best_score = float("inf")
-            for move in board.legal_moves:
+            for move in self.ordered_moves(board):
                 board.push(move)
                 score = self.minmax(board, depth - 1, alpha, beta)
                 board.pop()
@@ -165,5 +164,7 @@ class Engine:
 
         return best_score
 
+    def ordered_moves(self, board):
+        return []
 
 
