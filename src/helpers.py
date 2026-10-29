@@ -1,5 +1,4 @@
 import pygame
-
 from enum import Enum
 
 def letterbox(win_w, win_h):
@@ -22,11 +21,9 @@ def translate_event(event, scale, offset):
     return event
 
 
-class Assets():
+class Colours:
 
-    def __init__(self, piece_size= 80, screen_w = 1600, screen_h = 900):
-        self._load_assets((piece_size, piece_size), (screen_w, screen_h))
-
+    def __init__(self):
         self.black = (0, 0, 0)
         self.light = (245, 237, 255)
         self.dark = (141, 115, 198)
@@ -39,6 +36,12 @@ class Assets():
         self.safe = (72, 201, 176)
         self.danger = (236, 112, 99)
         self.move = (252, 243, 207)
+
+
+class Assets:
+
+    def __init__(self, piece_size= 80, screen_w = 1600, screen_h = 900):
+        self._load_assets((piece_size, piece_size), (screen_w, screen_h))
 
     def _load_assets(self, piece_size: tuple, bg_size: tuple):
         # Backdrops
@@ -80,58 +83,5 @@ class Assets():
                         "B" : B, "K" : K, "N" : N,
                         "P" : P, "Q" : Q, "R" : R
                     }
-
-
-class Button():
-    def __init__(self, manager):
-        self._assets = Assets()
-        self._manager = manager
-
-    def primary(self, text: str, x, y):
-        button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((x, y), (w, h)),
-            text=text,
-            manager=self._manager
-        )
-
-    def secondary(self, text: str, x, y, w, h):
-        button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((x, y), (w, h)),
-            text=text,
-            manager=self._manager
-        )
-
-    def danger(self, text: str, x, y, w, h):
-        button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((x, y), (w, h)),
-            text=text,
-            manager=self._manager
-        )
-
-
-class Menu:
-
-    def __init__(self, canvas, assets, manager):
-        self._canvas = canvas
-        self._assets = assets
-        self._manager = manager
-        self._nav = []
-        self.draw_main()
-
-    def back(self):
-        if len(self._nav) > 1:
-            pygame.event.post(self._nav.pop())
-        else:
-            pygame.event.post(pygame.event.Event(pygame.QUIT))
-
-    def draw_main(self):
-        self._canvas.blit(self._assets.bg_main, (0, 0))
-
-
-    def draw_exit_dialog(self):
-        pass
-
-
-
 
 

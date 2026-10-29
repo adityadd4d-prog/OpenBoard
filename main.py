@@ -1,7 +1,7 @@
 import sys
 import pygame
 
-import ui
+import helpers
 
 pygame.init()
 
@@ -14,7 +14,7 @@ clock = pygame.time.Clock()
 
 canvas = pygame.Surface(WINDOW_SIZE)
 
-assets = ui.Assets()
+assets = helpers.Assets()
 
 scaled = None
 running = True
@@ -23,7 +23,7 @@ while running:
     time_delta = clock.tick(FPS) / 1000.0
 
     window = pygame.display.get_surface()
-    scale, offset, out_size = ui.letterbox(*window.get_size())
+    scale, offset, out_size = helpers.letterbox(*window.get_size())
 
     if out_size[0] < 1 or out_size[1] < 1:
         pygame.event.pump()
