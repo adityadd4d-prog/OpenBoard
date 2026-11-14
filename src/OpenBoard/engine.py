@@ -8,6 +8,8 @@ from chess import polyglot as pg
 HASH_MOVE_BONUS = 1_000_000
 QUEEN_PROMOTION_BONUS = 20_000
 CAPTURE_BONUS = 10_000
+MATE_SCORE = 10_000
+MATE_THRESHOLD = 9_000  #
 
 PAWN_PST = (
     0, 0, 0, 0, 0, 0, 0, 0,
@@ -173,45 +175,70 @@ class Engine:
         return score
 
     def best_move(self, board):
-        best_move = None
+        board = board.copy()
         self._node_cnt = 0
 
+        moves = self.ordered_moves(board)
+        if not moves:
+            # Game is already over at the root: report it, there is no move.
+            if board.is_checkmate():
+                score = -MATE_SCORE if board.turn == chess.WHITE else MATE_SCORE
+            else:
+                score = 0
+            return None, score, 0
+
+        maximizing = board.turn == chess.WHITE
         alpha = float("-inf")
         beta = float("inf")
 
-        if board.turn == chess.WHITE:
-            best_score = float("-inf")
-            for move in self.ordered_moves(board):
-                board.push(move)
-                score = self.minmax(board, self._depth -1, alpha, beta)
-                board.pop()
-                if score > best_score:
-                    best_move = move
-                best_score = max(best_score, score)
-                alpha = max(alpha, best_score)
+        chosen = moves[0]
+        best_score = float("-inf") if maximizing else float("inf")
 
-        else:
-            best_score = float("inf")
-            for move in self.ordered_moves(board):
-                board.push(move)
-                score = self.minmax(board, self._depth -1, alpha, beta)
-                board.pop()
-                # self._logger.info(f"{move} | {score} | {self._node_cnt}")
+        for move in moves:
+            board.push(move)
+            score = self.minmax(board, self._depth - 1, alpha, beta)
+            board.pop()
+
+            if maximizing:
+                if score > best_score:
+                    best_score, chosen = score, move
+                alpha = max(alpha, best_score)
+            else:
                 if score < best_score:
-                    best_move = move
-                best_score = min(best_score, score)
+                    best_score, chosen = score, move
                 beta = min(beta, best_score)
 
-        return best_move, best_score, self._node_cnt
+        return chosen, best_score, self._node_cnt
+
+    @staticmethod
+    def _to_tt(score, ply):
+        """Root-relative mate score -> node-relative, for storing."""
+        if score >= MATE_THRESHOLD:
+            return score + ply
+        if score <= -MATE_THRESHOLD:
+            return score - ply
+        return score
+
+    @staticmethod
+    def _from_tt(score, ply):
+        """Node-relative mate score -> root-relative, for using at this ply."""
+        if score >= MATE_THRESHOLD:
+            return score - ply
+        if score <= -MATE_THRESHOLD:
+            return score + ply
+        return score
 
     def minmax(self, board, depth, alpha, beta):
 
         self._node_cnt += 1
 
+        ply = self.depth - depth
+
         board_hash = pg.zobrist_hash(board)
         if board_hash in self.__trans_table:
             score, hash_depth, flag = self.__trans_table[board_hash]
             if hash_depth >= depth:
+                score = self._from_tt(score, ply)
                 if flag == Flag.EXACT:
                     return score
                 elif flag == Flag.ALPHA and score <= alpha:
@@ -226,7 +253,7 @@ class Engine:
                 return 0
 
             if board.is_checkmate():
-                return (-10000 + (self.depth - depth)) if board.turn == chess.WHITE else (10000 - (self.depth - depth))
+                return (-MATE_SCORE + ply) if board.turn == chess.WHITE else (MATE_SCORE - ply)
 
         # Base Condition
         if depth == 0:
@@ -270,7 +297,7 @@ class Engine:
         else:
             fl = Flag.EXACT
 
-        self.__trans_table[board_hash] = (best_score, self.depth - depth, fl)
+        self.__trans_table[board_hash] = (self._to_tt(best_score, ply), depth, fl)
 
         return best_score
 
