@@ -1,5 +1,5 @@
 import chess
-import engine
+from OpenBoard import engine
 import time
 
 import logging

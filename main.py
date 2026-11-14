@@ -1,7 +1,8 @@
 import sys
 import pygame
 
-import helpers
+from OpenBoard import helpers
+from OpenBoard.helpers import Colours, Assets
 
 pygame.init()
 
@@ -14,7 +15,8 @@ clock = pygame.time.Clock()
 
 canvas = pygame.Surface(WINDOW_SIZE)
 
-assets = helpers.Assets()
+assets = Assets()
+colors = Colours()
 
 scaled = None
 running = True

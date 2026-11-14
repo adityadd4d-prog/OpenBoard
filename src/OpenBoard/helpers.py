@@ -1,5 +1,5 @@
 import pygame
-from enum import Enum
+from pathlib import Path
 
 def letterbox(win_w, win_h):
     """Return (scale, (offset_x, offset_y), (out_w, out_h)) for fitting the canvas."""
@@ -40,8 +40,12 @@ class Colours:
 
 class Assets:
 
-    def __init__(self, piece_size= 80, screen_w = 1600, screen_h = 900):
+    def __init__(self, piece_size= 100, screen_w = 1600, screen_h = 900):
         self._load_assets((piece_size, piece_size), (screen_w, screen_h))
+
+    def _get_assets_path(self):
+        base = Path(__file__).resolve().parent
+
 
     def _load_assets(self, piece_size: tuple, bg_size: tuple):
         # Backdrops
