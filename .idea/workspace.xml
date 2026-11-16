@@ -4,14 +4,29 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9658bf0b-61fa-4d68-b3b8-3eee63d4d67c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/colors.py" afterDir="false" />
+    <list default="true" id="9658bf0b-61fa-4d68-b3b8-3eee63d4d67c" name="Changes" comment="Improved minmax and best move method">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/helpers.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/helpers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/uv.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/BlackBishop.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/BlackKing.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/BlackKnight.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/BlackPawn.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/BlackQueen.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/BlackRook.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/WhiteBishop.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/WhiteKing.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/WhiteKnight.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/WhitePawn.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/WhiteQueen.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/WhiteRook.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/bg_fork.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/bg_main.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/bg_match.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/OpenBoard/Chess-Cli.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/OpenBoard/engine.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/OpenBoard/helpers.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/OpenBoard/ui.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/time_engine.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -70,6 +85,7 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/OpenBoard" />
       <recent name="$PROJECT_DIR$/src" />
       <recent name="$PROJECT_DIR$/logs" />
       <recent name="$PROJECT_DIR$/test" />
@@ -90,8 +106,8 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="DEBUG_JUST_MY_CODE" value="false" />
       <option name="RUN_TOOL" value="" />
+      <option name="RUN_AS_SCRIPT" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -110,6 +126,39 @@
       <option name="presentableId" value="Default" />
       <updated>1788681482012</updated>
     </task>
+    <task id="LOCAL-00001" summary="Minor Changes">
+      <option name="closed" value="true" />
+      <created>1793264727309</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1793264727309</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Minor Changes">
+      <option name="closed" value="true" />
+      <created>1794679586715</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1794679586715</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Added Evaluate and Ordered moves functions">
+      <option name="closed" value="true" />
+      <created>1794680374445</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1794680374445</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Improved minmax and best move method">
+      <option name="closed" value="true" />
+      <created>1794681624927</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1794681624927</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -122,5 +171,11 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Minor Changes" />
+    <MESSAGE value="Added Evaluate and Ordered moves functions" />
+    <MESSAGE value="Improved minmax and best move method" />
+    <option name="LAST_COMMIT_MESSAGE" value="Improved minmax and best move method" />
   </component>
 </project>
