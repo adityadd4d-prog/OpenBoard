@@ -163,22 +163,23 @@ def build_pgn(
 
     # Build node chain from moves
     if isinstance(moves, chess.Board):
-        board = moves.root()
-        if start_fen:
-            board = chess.Board(start_fen)
-        # Reconstruct from move_stack
-        uci_list = [m.uci() for m in moves.move_stack]
+        move_list = list(moves.move_stack)
     else:
-        uci_list = moves
-        board = chess.Board(start_fen) if start_fen else chess.Board()
+        move_list = list(moves)
 
     if start_fen and start_fen != chess.STARTING_FEN:
         game.setup(chess.Board(start_fen))
 
     node = game
     replay_board = chess.Board(start_fen) if start_fen else chess.Board()
-    for uci in uci_list:
-        move = chess.Move.from_uci(uci)
+    for item in move_list:
+        if isinstance(item, chess.Move):
+            move = item
+        else:
+            try:
+                move = replay_board.parse_san(item)
+            except Exception:
+                move = chess.Move.from_uci(item)
         node = node.add_variation(move)
         replay_board.push(move)
 

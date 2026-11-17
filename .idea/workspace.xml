@@ -6,7 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="9658bf0b-61fa-4d68-b3b8-3eee63d4d67c" name="Changes" comment="Refactoring The Whole Repo.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/openboard/core/results.py" beforeDir="false" afterPath="$PROJECT_DIR$/openboard/core/results.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/build_assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/tools/build_assets.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -154,7 +155,15 @@
       <option name="project" value="LOCAL" />
       <updated>1794857244790</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Refactoring The Whole Repo.">
+      <option name="closed" value="true" />
+      <created>1794886559669</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1794886559669</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

@@ -52,6 +52,12 @@ class SettingsStore:
         self._path = path
         self._settings: Settings = Settings()
         self._listeners: list[Callable[[Settings], None]] = []
+        self.load()
+
+    @property
+    def settings(self) -> Settings:
+        """The underlying Settings dataclass instance."""
+        return self._settings
 
     # ------------------------------------------------------------------
     # Public API

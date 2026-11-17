@@ -39,6 +39,15 @@ class ProfileStore:
     def __init__(self, path: Path) -> None:
         self._path = path
         self._profile: PlayerProfile | None = None
+        self.load()
+
+    @property
+    def profile(self) -> PlayerProfile:
+        """Return the active PlayerProfile."""
+        if self._profile is None:
+            self.load()
+        assert self._profile is not None
+        return self._profile
 
     # ------------------------------------------------------------------
     # Public API

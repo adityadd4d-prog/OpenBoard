@@ -29,7 +29,13 @@ def resource_path(rel: str) -> Path:
     directory that *contains* the ``openboard`` package (i.e. the repo root).
     """
     if is_frozen():
-        base = Path(sys._MEIPASS)  # type: ignore[attr-defined]
+        base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+        p = base / rel
+        if not p.exists():
+            exe_base = Path(sys.executable).parent
+            if (exe_base / rel).exists():
+                return exe_base / rel
+        return p
     else:
         # __file__ is openboard/paths.py → parent is openboard/ → parent is root
         base = Path(__file__).parent.parent

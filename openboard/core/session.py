@@ -323,6 +323,31 @@ class GameSession:
     # ------------------------------------------------------------------
 
     @property
+    def board(self) -> chess.Board:
+        """The underlying :class:`chess.Board`."""
+        return self._board
+
+    @property
+    def white(self) -> PlayerInfo:
+        """White player information."""
+        return self._white
+
+    @property
+    def black(self) -> PlayerInfo:
+        """Black player information."""
+        return self._black
+
+    @property
+    def clock(self) -> ChessClock:
+        """The chess clock."""
+        return self._clock
+
+    @property
+    def current_player(self) -> PlayerInfo:
+        """The player whose turn it is to move."""
+        return self._white if self._board.turn == chess.WHITE else self._black
+
+    @property
     def turn(self) -> chess.Color:
         """The side to move."""
         return self._board.turn
@@ -368,6 +393,11 @@ class GameSession:
     def san_moves(self) -> list[str]:
         """All moves played so far in SAN notation."""
         return list(self._san_moves)
+
+    @property
+    def draw_offered_by(self) -> chess.Color | None:
+        """The color that offered a draw, or None if no offer is pending."""
+        return self._draw_offered_by
 
     @property
     def status_text(self) -> str:

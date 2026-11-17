@@ -99,24 +99,49 @@ class AssetStore:
             log.warning("Asset '%s' not found%s.", name, f": {detail}" if detail else "")
             self._warned.add(name)
 
-    def _load_image(self, name: str, alpha: bool = True) -> pygame.Surface:
+    def _load_image(
+        self,
+        name: str,
+        alpha: bool = True,
+        size: tuple[int, int] | int | None = None,
+    ) -> pygame.Surface:
         """Load a surface from the index, returning a placeholder on failure."""
-        if name in self._image_cache:
-            return self._image_cache[name]
+        cache_key = f"{name}@{size}:{alpha}" if size is not None else f"{name}:{alpha}"
+        if cache_key in self._image_cache:
+            return self._image_cache[cache_key]
 
         entry = self._index.get(name)
         if entry is None:
             self._warn_once(name, "not in index")
             surf = _placeholder()
-            self._image_cache[name] = surf
+            self._image_cache[cache_key] = surf
             return surf
 
-        path = self._root / entry["path"]
+        rel_path = None
+        if "path" in entry:
+            rel_path = entry["path"]
+        elif "paths" in entry and entry["paths"]:
+            if size is not None and "sizes" in entry:
+                target_sz = [size, size] if isinstance(size, int) else list(size)
+                for p, sz in zip(entry["paths"], entry["sizes"]):
+                    if sz == target_sz:
+                        rel_path = p
+                        break
+            if rel_path is None:
+                rel_path = entry["paths"][0]
+
+        if rel_path is None:
+            self._warn_once(name, "no path found in index entry")
+            surf = _placeholder()
+            self._image_cache[cache_key] = surf
+            return surf
+
+        path = self._root / rel_path
         if not path.exists():
             self._warn_once(name, f"file missing: {path}")
-            w, h = entry.get("size", [88, 88])
+            w, h = entry.get("size", [88, 88]) if "size" in entry else [88, 88]
             surf = _placeholder(w, h)
-            self._image_cache[name] = surf
+            self._image_cache[cache_key] = surf
             return surf
 
         try:
@@ -128,7 +153,7 @@ class AssetStore:
             self._warn_once(name, str(exc))
             surf = _placeholder()
 
-        self._image_cache[name] = surf
+        self._image_cache[cache_key] = surf
         return surf
 
     # ------------------------------------------------------------------
@@ -156,7 +181,7 @@ class AssetStore:
         if cache_key in self._image_cache:
             return self._image_cache[cache_key]
 
-        base = self._load_image(name, alpha=True)
+        base = self._load_image(name, alpha=True, size=size)
         if base.get_width() != size or base.get_height() != size:
             scaled = pygame.transform.smoothscale(base, (size, size))
         else:

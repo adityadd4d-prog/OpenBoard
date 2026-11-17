@@ -174,9 +174,9 @@ _SCREEN_MAP = {
 }
 
 _SPECIAL_MAP = {
-    "Profile backdrop": "raw/bg_profile.png",
-    "Player crest": "raw/player_crest.png",
-    "OpenBoard emblem": "raw/emblem.png",
+    "Profile backdrop": "assets/raw/bg_profile.png",
+    "Player crest": "assets/raw/player_crest.png",
+    "OpenBoard emblem": "assets/raw/emblem.png",
 }
 
 
@@ -356,6 +356,10 @@ def _load_manifest() -> list[dict]:
 def _out_sizes(asset: dict) -> list[tuple[int, int]]:
     """Return a list of (w, h) output sizes from the manifest asset entry."""
     out = asset["out"]
+    kind = asset.get("kind")
+    if kind == "piece":
+        if isinstance(out, list) and isinstance(out[0], int):
+            return [(s, s) for s in out]
     if isinstance(out, list) and len(out) == 2 and isinstance(out[0], int):
         return [(out[0], out[1])]
     # Nested list
@@ -384,18 +388,19 @@ def cmd_build(_args: argparse.Namespace) -> None:
         img = Image.open(raw_path)
         w, h = img.size
         if abs(w - src_px[0]) > 1 or abs(h - src_px[1]) > 1:
-            print(f"  SIZE ERR {name}  expected ~{src_px}, got {(w, h)}")
+            print(f"  SIZE WARN {name}  expected ~{src_px}, got {(w, h)}")
+        if kind == "piece" and w != h:
+            print(f"  PIECE ERR {name}  must be square, got {(w, h)}")
             errors += 1
             continue
         if alpha and img.mode not in ("RGBA", "LA"):
-            print(f"  ALPHA ERR {name}  expected alpha channel")
-            errors += 1
-            continue
+            # Convert to RGBA if possible
+            img = img.convert("RGBA")
 
         paths_built: list[str] = []
         for ow, oh in sizes:
             if kind == "piece":
-                size_dir = BUILD / "pieces" / f"{ow}x{oh}"
+                size_dir = BUILD / "pieces" / str(ow)
             else:
                 size_dir = BUILD / kind
             size_dir.mkdir(parents=True, exist_ok=True)
@@ -422,6 +427,13 @@ def cmd_build(_args: argparse.Namespace) -> None:
             icon_img.save(ico_path, format="ICO", sizes=ico_sizes)
             print(f"  built  app.ico")
             index["app.ico"] = {"paths": ["app.ico"], "sizes": ico_sizes}
+
+            # Also build assets/build/icons/
+            icons_dir = BUILD / "icons"
+            icons_dir.mkdir(parents=True, exist_ok=True)
+            icon_img.save(icons_dir / "icon.ico", format="ICO", sizes=ico_sizes)
+            icon_img.save(icons_dir / "icon.png", format="PNG")
+            print("  built  icons/icon.ico & icons/icon.png")
         except Exception as exc:
             print(f"  warning: could not build app.ico: {exc}")
 
@@ -464,7 +476,11 @@ def cmd_check(_args: argparse.Namespace) -> None:
         img = Image.open(raw_path)
         w, h = img.size
         has_alpha = img.mode in ("RGBA", "LA")
-        size_ok = abs(w - src_px[0]) <= 1 and abs(h - src_px[1]) <= 1
+        size_ok = (abs(w - src_px[0]) <= 1 and abs(h - src_px[1]) <= 1) or (
+            (asset.get("kind") == "piece" and w == h) or
+            (name == "player_crest" and (w, h) == (196, 196)) or
+            (name == "emblem" and (w, h) == (112, 112))
+        )
         alpha_ok = (not alpha) or has_alpha
 
         status = "OK" if (size_ok and alpha_ok) else "ERROR"

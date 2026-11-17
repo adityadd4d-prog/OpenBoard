@@ -1,0 +1,214 @@
+[meta]
+design_w = 1600
+design_h = 900
+
+# ------------------------------------------------------------
+# Pieces  (12 × hi-res 352×352 → 88×72 at 4×)
+# ------------------------------------------------------------
+[[asset]]
+name = "piece_wK"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+[[asset]]
+name = "piece_wQ"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+[[asset]]
+name = "piece_wR"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+[[asset]]
+name = "piece_wB"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+[[asset]]
+name = "piece_wN"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+[[asset]]
+name = "piece_wP"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+[[asset]]
+name = "piece_bK"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+[[asset]]
+name = "piece_bQ"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+[[asset]]
+name = "piece_bR"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+[[asset]]
+name = "piece_bB"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+[[asset]]
+name = "piece_bN"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+[[asset]]
+name = "piece_bP"
+kind = "piece"
+scale = 4
+src_px = [352, 352]
+out = [88, 72]
+alpha = true
+
+# ------------------------------------------------------------
+# Backgrounds
+# ------------------------------------------------------------
+[[asset]]
+name = "bg_main"
+kind = "bg"
+scale = 1
+src_px = [1600, 900]
+out = [[1600, 900]]
+alpha = false
+
+[[asset]]
+name = "bg_about"
+kind = "bg"
+scale = 1
+src_px = [1600, 900]
+out = [[1600, 900]]
+alpha = false
+
+[[asset]]
+name = "bg_silhouettes"
+kind = "bg"
+scale = 1
+src_px = [1600, 900]
+out = [[1600, 900]]
+alpha = false
+
+[[asset]]
+name = "bg_profile"
+kind = "bg"
+scale = 1
+src_px = [1600, 900]
+out = [[1600, 900]]
+alpha = false
+
+# ------------------------------------------------------------
+# Illustrations
+# ------------------------------------------------------------
+[[asset]]
+name = "illus_iso_board"
+kind = "illus"
+scale = 2
+src_px = [832, 464]
+out = [[416, 232]]
+alpha = true
+
+# ------------------------------------------------------------
+# Cards
+# ------------------------------------------------------------
+[[asset]]
+name = "card_pass_play"
+kind = "card"
+scale = 2
+src_px = [512, 384]
+out = [[256, 192]]
+alpha = true
+
+[[asset]]
+name = "card_vs_engine"
+kind = "card"
+scale = 2
+src_px = [512, 384]
+out = [[256, 192]]
+alpha = true
+
+# ------------------------------------------------------------
+# Icons
+# ------------------------------------------------------------
+[[asset]]
+name = "player_crest"
+kind = "icon"
+scale = 4
+src_px = [784, 784]
+out = [[196, 196]]
+alpha = true
+
+[[asset]]
+name = "emblem"
+kind = "icon"
+scale = 2
+src_px = [224, 224]
+out = [[112, 112]]
+alpha = true
+
+[[asset]]
+name = "icon_gear"
+kind = "icon"
+scale = 4
+src_px = [128, 128]
+out = [[32, 32]]
+alpha = true
+
+[[asset]]
+name = "icon_pencil"
+kind = "icon"
+scale = 4
+src_px = [128, 128]
+out = [[32, 32]]
+alpha = true
+
+# ------------------------------------------------------------
+# App icon
+# ------------------------------------------------------------
+[[asset]]
+name = "app_icon"
+kind = "app"
+scale = 1
+src_px = [512, 512]
+out = [[512, 512]]
+alpha = true
+
