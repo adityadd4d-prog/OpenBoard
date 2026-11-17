@@ -4,29 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9658bf0b-61fa-4d68-b3b8-3eee63d4d67c" name="Changes" comment="Improved minmax and best move method">
+    <list default="true" id="9658bf0b-61fa-4d68-b3b8-3eee63d4d67c" name="Changes" comment="Refactoring The Whole Repo.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/BlackBishop.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/BlackKing.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/BlackKnight.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/BlackPawn.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/BlackQueen.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/BlackRook.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/WhiteBishop.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/WhiteKing.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/WhiteKnight.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/WhitePawn.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/WhiteQueen.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/WhiteRook.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/bg_fork.jpg" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/bg_main.jpg" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/bg_match.jpg" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/OpenBoard/Chess-Cli.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/OpenBoard/engine.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/OpenBoard/helpers.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/OpenBoard/ui.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/time_engine.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -158,7 +138,23 @@
       <option name="project" value="LOCAL" />
       <updated>1794681624927</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Refactoring The Whole Repo.">
+      <option name="closed" value="true" />
+      <created>1794857193401</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1794857193401</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Refactoring The Whole Repo.">
+      <option name="closed" value="true" />
+      <created>1794857244790</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1794857244790</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -176,6 +172,7 @@
     <MESSAGE value="Minor Changes" />
     <MESSAGE value="Added Evaluate and Ordered moves functions" />
     <MESSAGE value="Improved minmax and best move method" />
-    <option name="LAST_COMMIT_MESSAGE" value="Improved minmax and best move method" />
+    <MESSAGE value="Refactoring The Whole Repo." />
+    <option name="LAST_COMMIT_MESSAGE" value="Refactoring The Whole Repo." />
   </component>
 </project>

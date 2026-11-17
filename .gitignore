@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+dist/
+build/
+logs/
+assets/build/
+bin/stockfish/*/stockfish*
+*.pyc
+*.pyo
+.DS_Store
+*.egg-info/
+.venv/
