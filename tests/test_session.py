@@ -159,3 +159,16 @@ def test_draw_offer_and_accept() -> None:
     assert rec["winner"] is None
     assert rec["result"] == "1/2-1/2"
     assert rec["reason"] == Reason.DRAW_AGREED.value
+
+
+def test_last_move() -> None:
+    p_white = PlayerInfo(name="W", kind="human")
+    p_black = PlayerInfo(name="B", kind="human")
+    session = GameSession(p_white, p_black, TIME_CONTROLS["rapid"])
+
+    assert session.last_move is None
+    session.try_move(chess.E2, chess.E4)
+    assert session.last_move == chess.Move.from_uci("e2e4")
+    session.try_move(chess.E7, chess.E5)
+    assert session.last_move == chess.Move.from_uci("e7e5")
+    assert session.check_square is None

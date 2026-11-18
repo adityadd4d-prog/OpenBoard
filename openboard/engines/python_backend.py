@@ -63,7 +63,8 @@ def _worker_main(conn: multiprocessing.connection.Connection,
                 engine.set_use_book(req.get('use_book', True))
                 # margin is set by set_level, leave it as-is
             else:
-                # evaluate: use depth, no book, no margin
+                # evaluate: use depth, no book, no margin, clear stale play time_limit
+                engine._time_limit = None
                 if depth is not None:
                     engine.depth = depth
                 engine.set_use_book(False)
@@ -103,6 +104,7 @@ class PythonBackend(EngineBackend):
         self._cancel_event: multiprocessing.Event | None = None
         self._lock = threading.Lock()
         self._started = False
+        self._use_book = True
 
     def start(self) -> None:
         """Initialise the backend by spawning the worker process."""
@@ -154,8 +156,9 @@ class PythonBackend(EngineBackend):
                     pass
 
     def configure(self, **options: object) -> None:
-        """No-op: Python backend is configured per-request."""
-        pass
+        """Configure per-request options for the built-in engine."""
+        if 'use_book' in options:
+            self._use_book = bool(options['use_book'])
 
     def search(self, request: SearchRequest, cancel: threading.Event) -> SearchResult:
         """Send a search request to the worker and block until result arrives."""
@@ -180,7 +183,7 @@ class PythonBackend(EngineBackend):
             'level': request.level,
             'depth': request.depth,
             'time_s': request.time_s,
-            'use_book': True,
+            'use_book': self._use_book,
         }
 
         try:

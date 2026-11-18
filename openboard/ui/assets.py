@@ -213,15 +213,24 @@ class AssetStore:
             if not pygame.mixer.get_init():
                 result = None
             else:
+                path: Path | None = None
                 entry = self._index.get(name)
-                if entry is None:
-                    self._warn_once(name, "not in index")
+                if entry is not None:
+                    rel = entry.get("path")
+                    if rel is None and "paths" in entry and entry["paths"]:
+                        rel = entry["paths"][0]
+                    if rel:
+                        path = self._root / rel
+
+                if path is None or not path.exists():
+                    candidate = self._root / "sounds" / f"{name}.wav"
+                    if candidate.exists():
+                        path = candidate
+
+                if path is not None and path.exists():
+                    result = pygame.mixer.Sound(str(path))
                 else:
-                    path = self._root / entry["path"]
-                    if path.exists():
-                        result = pygame.mixer.Sound(str(path))
-                    else:
-                        self._warn_once(name, f"file missing: {path}")
+                    self._warn_once(name, "not in index")
         except Exception as exc:
             self._warn_once(name, str(exc))
 

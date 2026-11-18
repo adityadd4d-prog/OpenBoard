@@ -1,7 +1,7 @@
 """
 openboard.ui.scenes.about
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-About screen displaying controls, credits, licenses, and external links.
+About screen displaying controls and external repository links.
 """
 
 from __future__ import annotations
@@ -15,63 +15,60 @@ import pygame
 from openboard import config
 from openboard.ui import theme
 from openboard.ui.scenes.base import Scene
-from openboard.ui.theme import ACCENT, BORDER, CARD, CARD_BORDER, INK, PURPLE, SHADOW, TINT, draw_panel, draw_text, wrap_text
-from openboard.ui.widgets import Button, ScrollList
+from openboard.ui.theme import (
+    BORDER,
+    CARD,
+    CARD_BORDER,
+    INK,
+    SECONDARY,
+    draw_panel,
+    draw_text,
+    draw_wrapped_text,
+    fit_text,
+)
+from openboard.ui.widgets import Button
 
 log = logging.getLogger("openboard.ui.scenes.about")
 
 
 class AboutScene(Scene):
-    """About dialog with controls, engine information, and third-party licenses."""
+    """About screen with app info, controls reference, and repository links."""
 
     name = "about"
 
     def on_enter(self, **_kw: Any) -> None:
-        self.back_btn = Button((60, 48, 140, 52), "BACK", lambda: self.ctx.scenes.go("main_menu"), style="secondary")
+        self.back_btn = Button(
+            (64, 48, 128, 52),
+            "BACK",
+            lambda: self.ctx.scenes.go("main_menu"),
+            style="secondary",
+            shadow=8,
+        )
 
-        pw = 1100
-        ph = 700
-        px = (config.DESIGN_W - pw) // 2
-        py = 120
-        self.panel_rect = pygame.Rect(px, py, pw, ph)
+        # Central card matching the neo-brutalist reference layout
+        self.panel_rect = pygame.Rect(350, 210, 900, 560)
 
-        # GitHub link button
+        # Two repository link buttons flush with inner margins (x=390..1210)
         self.github_btn = Button(
-            (px + 48, py + ph - 80, 240, 48),
+            (390, 682, 396, 52),
             "GITHUB REPO ↗",
             self._open_github,
             style="secondary",
+            shadow=6,
         )
-
-        # Stockfish source button
         self.stockfish_btn = Button(
-            (px + 308, py + ph - 80, 260, 48),
+            (814, 682, 396, 52),
             "STOCKFISH SOURCE ↗",
             self._open_stockfish,
             style="secondary",
+            shadow=6,
         )
 
-        # Prepare credits lines
-        caps = self.ctx.engines.capabilities()
-        sf_name = caps.stockfish_name or "Stockfish (GNU GPLv3)"
-
-        credits_text = [
-            ("OpenBoard", f"Version {config.APP_VERSION} — Neo-brutalist offline chess"),
-            ("pygame", "v2.x — Multimedia & game engine (LGPL-2.1)"),
-            ("python-chess", "Chess rules, move generation, and UCI engine interface (GPL-3.0+)"),
-            ("Stockfish", f"{sf_name} — Free software under GNU GPLv3."),
-            ("Source Code", config.STOCKFISH_SOURCE_URL),
-            ("Inter Font", "Designed by Rasmus Andersson — SIL Open Font License 1.1"),
-            ("platformdirs", "Standard cross-platform storage directories (MIT)"),
-            ("Pillow", "Image processing pipeline tools (HPND)"),
+        self._controls: list[tuple[str, str]] = [
+            ("MOVE", "Piece → square"),
+            ("PLAY", "Blitz 3 + 2  /  Rapid 10 + 0  /  No Clock"),
+            ("EVALUATE", "FEN  /  Interactive board"),
         ]
-
-        self.credits_list = ScrollList(
-            (px + 520, py + 160, pw - 568, ph - 260),
-            item_height=56,
-            draw_item=self._draw_credit_row,
-            items=credits_text,
-        )
 
     def _open_github(self) -> None:
         try:
@@ -85,12 +82,6 @@ class AboutScene(Scene):
         except Exception as exc:
             log.warning("Could not open Stockfish link: %s", exc)
 
-    def _draw_credit_row(self, surf: pygame.Surface, item: tuple[str, str], rect: pygame.Rect, idx: int, hovered: bool) -> None:
-        title, desc = item
-        draw_text(surf, title, "label", INK, (rect.x + 8, rect.y + 6), anchor="topleft")
-        draw_text(surf, desc, "small", TINT, (rect.x + 8, rect.bottom - 8), anchor="bottomleft")
-        pygame.draw.line(surf, CARD_BORDER, (rect.x, rect.bottom - 1), (rect.right, rect.bottom - 1), 1)
-
     def handle_event(self, event: pygame.event.Event) -> None:
         if self.back_btn.handle_event(event):
             return
@@ -103,7 +94,6 @@ class AboutScene(Scene):
             return
         if self.stockfish_btn.handle_event(event):
             return
-        self.credits_list.handle_event(event)
 
     def update(self, dt: float) -> None:
         self.back_btn.update(dt)
@@ -117,42 +107,40 @@ class AboutScene(Scene):
         except Exception:
             surf.fill(theme.BG)
 
+        # Top bar: BACK button & ABOUT title
         self.back_btn.draw(surf)
+        draw_text(surf, "ABOUT", "title", INK, (263, 52), anchor="topleft")
 
-        draw_panel(surf, self.panel_rect, fill=CARD, border=BORDER, shadow=SHADOW, shadow_color=INK)
-        px, py, pw, ph = self.panel_rect
+        # Central card
+        draw_panel(surf, self.panel_rect, fill=CARD, border=BORDER, shadow=8, shadow_color=INK)
 
-        # Emblem & Header (Left column)
+        # Emblem & header
         try:
             emblem = self.ctx.assets.image("emblem")
-            surf.blit(emblem, (px + 48, py + 48))
+            surf.blit(emblem, (398, 250))
         except Exception:
             pass
 
-        draw_text(surf, "OPENBOARD", "title", INK, (px + 180, py + 56), anchor="topleft")
-        draw_text(surf, f"OFFLINE DESKTOP CHESS  ·  v{config.APP_VERSION}", "small", PURPLE, (px + 180, py + 104), anchor="topleft")
+        draw_text(surf, "OPENBOARD", "title", INK, (546, 260), anchor="topleft")
+        subtitle = f"PYGAME CHESS  ·  v{config.APP_VERSION}"
+        draw_text(surf, fit_text(subtitle, "small", 650), "small", SECONDARY, (546, 318), anchor="topleft")
 
-        # Controls reference
-        ctrl_y = py + 180
-        draw_text(surf, "CONTROLS", "heading", INK, (px + 48, ctrl_y), anchor="topleft")
+        # Horizontal divider
+        pygame.draw.line(surf, CARD_BORDER, (390, 393), (1210, 393), 2)
 
-        controls = [
-            ("MOVE", "Click square or drag and drop piece"),
-            ("PLAY", "Blitz (3 + 2) and Rapid (10 + 0)"),
-            ("EVALUATE", "FEN, SAN, or LAN move sequences"),
-            ("HOTKEYS", "F11 Fullscreen  ·  F2 Design Overlay"),
-        ]
+        # Controls section
+        draw_text(surf, "CONTROLS", "heading", INK, (390, 428), anchor="topleft")
 
-        cy = ctrl_y + 46
-        for action, desc in controls:
-            draw_text(surf, action, "label", ACCENT, (px + 48, cy), anchor="topleft")
-            draw_text(surf, desc, "body", INK, (px + 48, cy + 24), anchor="topleft")
-            cy += 60
+        label_x = 390
+        value_x = 604
+        value_max_w = 1210 - value_x
+        row_y = 492
+        row_step = 56
+        for action, desc in self._controls:
+            draw_text(surf, fit_text(action, "label", value_x - label_x - 16), "label", INK, (label_x, row_y), anchor="topleft")
+            draw_wrapped_text(surf, desc, "body", INK, (value_x, row_y), max_w=value_max_w, line_gap=4, max_lines=2)
+            row_y += row_step
 
-        # Credits & Licenses (Right column)
-        draw_text(surf, "CREDITS & LICENSES", "heading", INK, (px + 520, py + 110), anchor="topleft")
-        self.credits_list.draw(surf)
-
-        # Action buttons
+        # Repository link buttons
         self.github_btn.draw(surf)
         self.stockfish_btn.draw(surf)

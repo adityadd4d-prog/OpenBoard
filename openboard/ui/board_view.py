@@ -21,6 +21,7 @@ from openboard.ui.theme import (
     ACCENT,
     BORDER,
     CARD,
+    CARD_BORDER,
     DANGER,
     INK,
     PURPLE,
@@ -82,7 +83,8 @@ class BoardView:
         self._promotion_color: chess.Color = chess.WHITE
         self._promotion_callback: Callable[[int], None] | None = None
         self._promotion_rect: pygame.Rect | None = None
-        self._promo_options: list[tuple[int, pygame.Rect]] = []
+        self._promo_options: list[tuple[int, pygame.Rect, str, str]] = []
+        self._promo_hovered: int | None = None
 
         # Cache static board background
         self._board_surf: pygame.Surface | None = None
@@ -95,7 +97,7 @@ class BoardView:
         w = total_sq + frame_pad * 2
         h = total_sq + frame_pad * 2
         surf = pygame.Surface((w, h))
-        surf.fill(theme.BG)
+        surf.fill(CARD)
 
         # Draw frame panel around squares
         board_rect = pygame.Rect(frame_pad, frame_pad, total_sq, total_sq)
@@ -141,7 +143,9 @@ class BoardView:
         self._anim_duration = ms / 1000.0
         self._anim_t = 0.0
 
-        p = self.board.piece_at(move.from_square)
+        p = self.board.piece_at(move.to_square)
+        if p is None:
+            p = self.board.piece_at(move.from_square)
         self._anim_piece = p
 
         self._anim_start_pos = self._square_coords(move.from_square)
@@ -151,21 +155,49 @@ class BoardView:
         self._promotion_active = True
         self._promotion_color = color
         self._promotion_callback = callback
+        self._promo_hovered = None
 
         total_sq = self.square_size * 8
-        pw = min(360, total_sq - 32)
-        ph = 100
+        pw = 460
+        ph = 190
         px = self.origin[0] + (total_sq - pw) // 2
         py = self.origin[1] + (total_sq - ph) // 2
         self._promotion_rect = pygame.Rect(px, py, pw, ph)
 
         # 4 options: Queen, Rook, Bishop, Knight
-        pieces = [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT]
+        pieces = [
+            (chess.QUEEN, "QUEEN", "Q"),
+            (chess.ROOK, "ROOK", "R"),
+            (chess.BISHOP, "BISHOP", "B"),
+            (chess.KNIGHT, "KNIGHT", "N"),
+        ]
         self._promo_options.clear()
-        opt_w = pw // 4
-        for idx, pt in enumerate(pieces):
-            r = pygame.Rect(px + idx * opt_w, py, opt_w, ph)
-            self._promo_options.append((pt, r))
+        card_w = 88
+        card_h = 104
+        gap = 14
+        total_cards_w = 4 * card_w + 3 * gap
+        start_x = self._promotion_rect.centerx - total_cards_w // 2
+        card_y = py + 66
+
+        for idx, (pt, label, key) in enumerate(pieces):
+            r = pygame.Rect(start_x + idx * (card_w + gap), card_y, card_w, card_h)
+            self._promo_options.append((pt, r, label, key))
+
+    def _choose_promotion(self, pt: int) -> None:
+        self._promotion_active = False
+        self._promo_hovered = None
+        if self._promotion_callback:
+            cb = self._promotion_callback
+            self._promotion_callback = None
+            cb(pt)
+
+    def _cancel_promotion(self) -> None:
+        self._promotion_active = False
+        self._promo_hovered = None
+        self._promotion_callback = None
+        self.selected_square = None
+        self._dragged_sq = None
+        self._drag_pos = None
 
     def _square_coords(self, square: int) -> tuple[float, float]:
         file = chess.square_file(square)
@@ -208,15 +240,47 @@ class BoardView:
     def handle_event(self, event: pygame.event.Event) -> MoveIntent | None:
         # Promotion popup absorbs events
         if self._promotion_active:
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                for pt, r in self._promo_options:
+            if event.type == pygame.MOUSEMOTION:
+                self._promo_hovered = None
+                for idx, (pt, r, label, key) in enumerate(self._promo_options):
                     if r.collidepoint(event.pos):
-                        self._promotion_active = False
-                        if self._promotion_callback:
-                            cb = self._promotion_callback
-                            self._promotion_callback = None
-                            cb(pt)
+                        self._promo_hovered = idx
+                        break
+                return None
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    for pt, r, label, key in self._promo_options:
+                        if r.collidepoint(event.pos):
+                            self._choose_promotion(pt)
+                            return None
+                    # Click outside popup panel cancels
+                    if self._promotion_rect and not self._promotion_rect.collidepoint(event.pos):
+                        self._cancel_promotion()
                         return None
+                elif event.button == 3:  # Right-click cancels
+                    self._cancel_promotion()
+                    return None
+                return None
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self._cancel_promotion()
+                    return None
+                if event.key in (pygame.K_q, pygame.K_1):
+                    self._choose_promotion(chess.QUEEN)
+                    return None
+                if event.key in (pygame.K_r, pygame.K_2):
+                    self._choose_promotion(chess.ROOK)
+                    return None
+                if event.key in (pygame.K_b, pygame.K_3):
+                    self._choose_promotion(chess.BISHOP)
+                    return None
+                if event.key in (pygame.K_n, pygame.K_k, pygame.K_4):
+                    self._choose_promotion(chess.KNIGHT)
+                    return None
+                return None
+
             return None
 
         if not self._is_interactive_turn():
@@ -285,7 +349,7 @@ class BoardView:
             total_sq + frame_pad * 2,
             total_sq + frame_pad * 2,
         )
-        draw_panel(surf, board_rect, fill=theme.BG, border=BORDER, shadow=SHADOW)
+        draw_panel(surf, board_rect, fill=CARD, border=BORDER, shadow=SHADOW)
 
         # Draw squares
         for file in range(8):
@@ -299,18 +363,21 @@ class BoardView:
 
         # Coordinate labels
         rank_names = ["1", "2", "3", "4", "5", "6", "7", "8"]
-        file_names = ["A", "B", "C", "D", "E", "F", "G", "H"]
+        file_names = ["a", "b", "c", "d", "e", "f", "g", "h"]
         if self.orientation == chess.BLACK:
             rank_names.reverse()
             file_names.reverse()
 
+        margin_left_cx = (self.origin[0] - frame_pad + BORDER + self.origin[0]) // 2
+        margin_bottom_cy = (self.origin[1] + total_sq + self.origin[1] + total_sq + frame_pad - BORDER) // 2
+
         for idx, r_name in enumerate(reversed(rank_names)):
             ry = self.origin[1] + idx * self.square_size + self.square_size // 2
-            draw_text(surf, r_name, "small", INK, (self.origin[0] - 12, ry), anchor="midright")
+            draw_text(surf, r_name, "coord", INK, (margin_left_cx, ry), anchor="center")
 
         for idx, f_name in enumerate(file_names):
             fx = self.origin[0] + idx * self.square_size + self.square_size // 2
-            draw_text(surf, f_name, "small", INK, (fx, self.origin[1] + total_sq + 14), anchor="midtop")
+            draw_text(surf, f_name, "coord", INK, (fx, margin_bottom_cy), anchor="center")
 
         # Overlays: Last move highlight
         if self.last_move:
@@ -355,7 +422,7 @@ class BoardView:
             # Skip dragged piece or animated piece during movement
             if sq == self._dragged_sq:
                 continue
-            if self._animating and self._anim_move and sq == self._anim_move.from_square:
+            if self._animating and self._anim_move and (sq == self._anim_move.from_square or sq == self._anim_move.to_square):
                 continue
 
             piece = self.board.piece_at(sq)
@@ -383,17 +450,44 @@ class BoardView:
 
         # Promotion popup
         if self._promotion_active and self._promotion_rect:
+            # 1. Fullscreen Dim overlay
             dim_surf = pygame.Surface((1600, 900), pygame.SRCALPHA)
-            dim_surf.fill((*INK, 90))
+            dim_surf.fill((*INK, 115))
             surf.blit(dim_surf, (0, 0))
 
-            draw_panel(surf, self._promotion_rect, fill=CARD, border=BORDER, shadow=SHADOW)
-            for pt, r in self._promo_options:
-                p_surf = self.assets.piece(self._promotion_color, pt, min(r.width, r.height) - 16)
-                px = r.centerx - p_surf.get_width() // 2
-                py = r.centery - p_surf.get_height() // 2
+            # 2. Main modal card
+            draw_panel(surf, self._promotion_rect, fill=CARD, border=BORDER, shadow=SHADOW, shadow_color=INK)
+
+            # 3. Header title and helper hint
+            draw_text(surf, "PROMOTE PAWN", "heading", INK, (self._promotion_rect.centerx, self._promotion_rect.y + 24), anchor="center")
+            draw_text(
+                surf,
+                "Select a piece or press [Q, R, B, N] · Esc to cancel",
+                "small",
+                ACCENT,
+                (self._promotion_rect.centerx, self._promotion_rect.y + 48),
+                anchor="center",
+            )
+
+            # 4. 4 Piece Option Cards
+            for idx, (pt, r, label, key) in enumerate(self._promo_options):
+                is_hov = (self._promo_hovered == idx)
+                fill_col = PURPLE if is_hov else CARD
+                text_col = CARD if is_hov else INK
+                shadow_val = 2 if is_hov else 4
+                offset = -1 if is_hov else 0
+                draw_r = r.move(offset, offset)
+
+                draw_panel(surf, draw_r, fill=fill_col, border=BORDER, shadow=shadow_val, shadow_color=INK)
+
+                # Piece sprite
+                p_surf = self.assets.piece(self._promotion_color, pt, 56)
+                px = draw_r.centerx - p_surf.get_width() // 2
+                py = draw_r.y + 12
                 surf.blit(p_surf, (px, py))
-                pygame.draw.rect(surf, CARD_BORDER, r, 1)
+
+                # Label with shortcut key
+                draw_text(surf, f"[{key}] {label}", "small", text_col, (draw_r.centerx, draw_r.bottom - 16), anchor="center")
 
 
 def _demo() -> None:

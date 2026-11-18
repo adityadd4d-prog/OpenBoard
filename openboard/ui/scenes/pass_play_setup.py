@@ -16,7 +16,7 @@ from openboard import config
 from openboard.core.session import PlayerInfo
 from openboard.ui import theme
 from openboard.ui.scenes.base import Scene
-from openboard.ui.theme import BORDER, CARD, INK, SHADOW, TINT, draw_panel, draw_text
+from openboard.ui.theme import BORDER, CARD, INK, PURPLE, SHADOW, TINT, draw_panel, draw_text
 from openboard.ui.widgets import Button, Chips, TextInput
 
 
@@ -26,22 +26,28 @@ class PassPlaySetupScene(Scene):
     name = "pass_play_setup"
 
     def on_enter(self, **_kw: Any) -> None:
-        self.back_btn = Button((60, 48, 140, 52), "BACK", lambda: self.ctx.scenes.go("opponent_select"), style="secondary")
+        self.back_btn = Button(
+            (64, 48, 128, 52),
+            "BACK",
+            lambda: self.ctx.scenes.go("opponent_select"),
+            style="secondary",
+            shadow=8,
+        )
 
-        pw = 640
-        ph = 560
-        px = (config.DESIGN_W - pw) // 2
-        py = (config.DESIGN_H - ph) // 2
-        self.panel_rect = pygame.Rect(px, py, pw, ph)
+        # Center modal card matching assets/reference/pass_play.png
+        self.panel_rect = pygame.Rect(400, 196, 800, 560)
 
         # Player 2 name input
         self.p2_input = TextInput(
-            (px + 48, py + 120, pw - 96, 56),
-            text="Player 2",
+            (656, 284, 504, 64),
+            text="Alex",
             max_len=config.NAME_MAX,
             placeholder="Enter Player 2 name",
             on_change=self._validate_input,
             on_submit=lambda _: self._start_game(),
+            fill=TINT,
+            shadow=0,
+            border_color=INK,
         )
 
         # Time control selection
@@ -51,18 +57,26 @@ class PassPlaySetupScene(Scene):
         options = [tc.label for tc in config.TIME_CONTROLS.values()]
 
         self.tc_chips = Chips(
-            (px + 48, py + 260, pw - 96, 56),
+            (656, 482, 504, 64),
             options=options,
             selected=sel_idx,
             on_change=self._on_tc_change,
+            font_role="label",
+            shadow=8,
+            spacing=15,
+            chip_w=158,
+            text_color=INK,
         )
 
         # Start button
         self.start_btn = Button(
-            (px + 48, py + ph - 96, pw - 96, 64),
+            (440, 628, 720, 64),
             "START GAME",
             self._start_game,
             style="primary",
+            shadow=8,
+            text_color_override=INK,
+            font_role="heading",
         )
 
         self._validate_input(self.p2_input.text)
@@ -134,21 +148,35 @@ class PassPlaySetupScene(Scene):
         except Exception:
             surf.fill(theme.BG)
 
-        draw_panel(surf, self.panel_rect, fill=CARD, border=BORDER, shadow=SHADOW, shadow_color=INK)
-
-        # Panel header
-        draw_text(surf, "PASS & PLAY SETUP", "heading", INK, (self.panel_rect.centerx, self.panel_rect.y + 36), anchor="midtop")
-
-        # Player 2 input label & helper
-        draw_text(surf, "PLAYER 2 NAME", "label", INK, (self.panel_rect.x + 48, self.panel_rect.y + 94), anchor="bottomleft")
-        p1_name = getattr(self.ctx.profile.profile, "name", "Player 1")
-        helper_msg = f"Player 1: {p1_name} · Colors assigned randomly"
-        draw_text(surf, helper_msg, "small", TINT, (self.panel_rect.x + 48, self.panel_rect.y + 186), anchor="topleft")
-
-        # Time control label
-        draw_text(surf, "TIME CONTROL", "label", INK, (self.panel_rect.x + 48, self.panel_rect.y + 234), anchor="bottomleft")
-
-        self.p2_input.draw(surf)
-        self.tc_chips.draw(surf)
-        self.start_btn.draw(surf)
+        # Back button
         self.back_btn.draw(surf)
+
+        # Top bar title
+        draw_text(surf, "PASS & PLAY", "title", INK, (263, 56), anchor="topleft")
+
+        # Modal panel
+        draw_panel(surf, self.panel_rect, fill=CARD, border=BORDER, shadow=8, shadow_color=INK)
+
+        # Section heading
+        draw_text(surf, "PLAYERS", "heading", INK, (440, 230), anchor="topleft")
+
+        # Player 2 row
+        draw_text(surf, "PLAYER 2", "heading", INK, (440, 302), anchor="topleft")
+        self.p2_input.draw(surf)
+
+        # Helper text
+        draw_text(
+            surf,
+            "Player 1 from profile · Colors assigned randomly",
+            "body",
+            INK,
+            (440, 390),
+            anchor="topleft",
+        )
+
+        # Time row
+        draw_text(surf, "TIME", "heading", INK, (440, 502), anchor="topleft")
+        self.tc_chips.draw(surf)
+
+        # Start button
+        self.start_btn.draw(surf)

@@ -12,6 +12,7 @@ from typing import Literal
 
 Backend = Literal["python", "stockfish"]
 Purpose = Literal["play", "evaluate"]
+EngineMode = Literal["auto", "custom", "stockfish"]
 
 MATE_SCORE = 10_000
 MATE_THRESHOLD = 9_000
@@ -70,6 +71,8 @@ class Capabilities:
     smart_engine: bool
     use_book: bool
     cpu_count: int
+    engine_mode: EngineMode = "auto"
+    custom_max_depth: int = 4
 
 
 # ---------------------------------------------------------------------------

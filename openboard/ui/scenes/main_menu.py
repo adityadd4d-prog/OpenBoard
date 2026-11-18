@@ -14,8 +14,26 @@ import pygame
 from openboard import config
 from openboard.ui import theme
 from openboard.ui.scenes.base import Scene
-from openboard.ui.theme import ACCENT, BORDER, CARD, INK, PURPLE, SHADOW, draw_panel, draw_text, font
+from openboard.ui.theme import BORDER, CARD, INK, PURPLE, WORDMARK_PURPLE, draw_panel, draw_text, font
 from openboard.ui.widgets import Button
+
+
+def _render_tracked(f: pygame.font.Font, text: str, color: tuple[int, int, int], tracking: int = 0) -> pygame.Surface:
+    """Render text with specified tracking (letter-spacing adjustment)."""
+    try:
+        surfs = [f.render(ch, True, color) for ch in text]
+        advances = [f.metrics(ch)[0][4] + tracking for ch in text]
+        total_w = sum(advances[:-1]) + surfs[-1].get_width()
+        h = max(s.get_height() for s in surfs)
+        surf = pygame.Surface((total_w, h), pygame.SRCALPHA)
+        x = 0
+        for i, s in enumerate(surfs):
+            surf.blit(s, (x, 0))
+            if i < len(advances):
+                x += advances[i]
+        return surf
+    except Exception:
+        return f.render(text, True, color)
 
 
 class MainMenuScene(Scene):
@@ -24,30 +42,30 @@ class MainMenuScene(Scene):
     name = "main_menu"
 
     def on_enter(self, **_kw: Any) -> None:
-        self._bob_t: float = 0.0
         self._is_active: bool = True
 
-        # Left column layout
-        bx = 140
-        btn_w = 340
-        btn_h = 68
-        gap = 18
-        start_y = 380
+        # Left column layout matching Figma reference
+        bx = 224
+        btn_w = 370
+        btn_h = 64
+        gap = 24
+        start_y = 340
 
         self.buttons: list[Button] = [
-            Button((bx, start_y + 0 * (btn_h + gap), btn_w, btn_h), "PLAY", lambda: self.ctx.scenes.go("opponent_select")),
-            Button((bx, start_y + 1 * (btn_h + gap), btn_w, btn_h), "EVALUATE", lambda: self.ctx.scenes.go("evaluate")),
-            Button((bx, start_y + 2 * (btn_h + gap), btn_w, btn_h), "PROFILE", lambda: self.ctx.scenes.go("profile")),
-            Button((bx, start_y + 3 * (btn_h + gap), btn_w, btn_h), "ABOUT", lambda: self.ctx.scenes.go("about")),
-            Button((bx, start_y + 4 * (btn_h + gap), btn_w, btn_h), "QUIT", self._on_quit_click, style="secondary"),
+            Button((bx, start_y + 0 * (btn_h + gap), btn_w, btn_h), "PLAY", lambda: self.ctx.scenes.go("opponent_select"), align="left", padding_x=30, style="secondary"),
+            Button((bx, start_y + 1 * (btn_h + gap), btn_w, btn_h), "EVALUATE", lambda: self.ctx.scenes.go("evaluate"), align="left", padding_x=30, style="secondary"),
+            Button((bx, start_y + 2 * (btn_h + gap), btn_w, btn_h), "PROFILE", lambda: self.ctx.scenes.go("profile"), align="left", padding_x=30, style="secondary"),
+            Button((bx, start_y + 3 * (btn_h + gap), btn_w, btn_h), "ABOUT", lambda: self.ctx.scenes.go("about"), align="left", padding_x=30, style="secondary"),
+            Button((bx, start_y + 4 * (btn_h + gap), btn_w, btn_h), "QUIT", self._on_quit_click, align="left", padding_x=30, style="secondary"),
         ]
 
-        # Gear button in top-right
+        # Gear button in top-right: 80x80 box at (1456, 48) with 8px shadow
         self.gear_btn = Button(
-            (config.DESIGN_W - 84, 36, 48, 48),
+            (1456, 48, 80, 80),
             "",
             lambda: self.ctx.scenes.push("settings"),
-            style="ghost",
+            style="secondary",
+            shadow=8,
         )
 
         self.focused_idx: int = 0
@@ -56,6 +74,7 @@ class MainMenuScene(Scene):
     def _update_focus(self) -> None:
         for idx, btn in enumerate(self.buttons):
             btn.focused = idx == self.focused_idx
+            btn.fill_override = PURPLE if btn.focused else CARD
 
     def _on_quit_click(self) -> None:
         def handle_confirm(yes: bool) -> None:
@@ -96,9 +115,6 @@ class MainMenuScene(Scene):
         self.gear_btn.handle_event(event)
 
     def update(self, dt: float) -> None:
-        if self._is_active:
-            self._bob_t += dt
-
         for btn in self.buttons:
             btn.update(dt)
         self.gear_btn.update(dt)
@@ -113,20 +129,16 @@ class MainMenuScene(Scene):
 
         # Wordmark: 'Open' in INK, 'Board' in vivid purple
         wordmark_f = font("wordmark")
-        open_surf = wordmark_f.render("OPEN", True, INK)
-        board_surf = wordmark_f.render("BOARD", True, ACCENT)
+        open_surf = _render_tracked(wordmark_f, "Open", INK, -15)
+        board_surf = _render_tracked(wordmark_f, "Board", WORDMARK_PURPLE, -11)
 
-        surf.blit(open_surf, (140, 110))
-        surf.blit(board_surf, (140, 210))
+        surf.blit(open_surf, (32, 10))
+        surf.blit(board_surf, (225, 148))
 
-        # Isometric board illustration on the right with idle bob
+        # Isometric board illustration on the right (static, no motion/animation)
         try:
             illus = self.ctx.assets.image("illus_iso_board")
-            # Bobbing ~4px over 4s sine wave
-            bob_offset = 4.0 * math.sin((2.0 * math.pi / 4.0) * self._bob_t)
-            ix = 920
-            iy = 280 + bob_offset
-            surf.blit(illus, (ix, int(iy)))
+            surf.blit(illus, (738, 178))
         except Exception:
             pass
 

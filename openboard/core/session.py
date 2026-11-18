@@ -147,7 +147,9 @@ class GameSession:
         if piece is None or piece.piece_type != chess.PAWN:
             return False
         rank = chess.square_rank(to_sq)
-        return rank in (0, 7)
+        if rank not in (0, 7):
+            return False
+        return chess.Move(from_sq, to_sq, promotion=chess.QUEEN) in self._board.legal_moves
 
     def try_move(
         self,
@@ -269,8 +271,8 @@ class GameSession:
         log.debug("Draw offered by %s", "WHITE" if by == chess.WHITE else "BLACK")
 
     def accept_draw(self) -> None:
-        """Accept a pending draw offer.  Has no effect if none is pending."""
-        if self._draw_offered_by is None or self._outcome is not None:
+        """Accept a pending draw offer or agree to a draw."""
+        if self._outcome is not None:
             return
         self._outcome = GameOutcome(winner=None, reason=Reason.DRAW_AGREED)
         self._draw_offered_by = None
@@ -326,6 +328,13 @@ class GameSession:
     def board(self) -> chess.Board:
         """The underlying :class:`chess.Board`."""
         return self._board
+
+    @property
+    def last_move(self) -> chess.Move | None:
+        """The last move played, or None if no moves have been made yet."""
+        if self._board.move_stack:
+            return self._board.peek()
+        return None
 
     @property
     def white(self) -> PlayerInfo:
@@ -423,12 +432,23 @@ class GameSession:
         Returns:
             A JSON-serialisable ``dict``.
         """
+        try:
+            game = chess.pgn.Game.from_board(self._board)
+            game.headers["White"] = self._white.name
+            game.headers["Black"] = self._black.name
+            game.headers["Result"] = self._outcome.result_string if self._outcome else "*"
+            exporter = chess.pgn.StringExporter(headers=True, variations=False, comments=False)
+            pgn_str = game.accept(exporter)
+        except Exception:
+            pgn_str = " ".join(self._san_moves)
+
         return {
             "white": self._white.name,
             "black": self._black.name,
             "player1_color": "white" if player1_color == chess.WHITE else "black",
             "start_fen": self._start_fen,
             "san_moves": list(self._san_moves),
+            "pgn": pgn_str,
             "result": self._outcome.result_string if self._outcome else "*",
             "reason": self._outcome.reason.value if self._outcome else None,
             "winner": (

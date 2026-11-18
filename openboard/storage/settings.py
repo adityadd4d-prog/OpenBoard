@@ -19,6 +19,9 @@ from openboard import config
 log = logging.getLogger("openboard.storage.settings")
 
 
+ENGINE_MODES: tuple[str, ...] = ("auto", "custom", "stockfish")
+
+
 @dataclass(slots=True)
 class Settings:
     """All user-configurable settings with safe defaults."""
@@ -27,6 +30,8 @@ class Settings:
     audio: bool = True
     use_book: bool = True
     smart_engine: bool = True
+    engine_mode: str = "auto"
+    custom_max_depth: int = config.PY_EVAL_MAX_DEPTH
     fps: int = config.DEFAULT_FPS
     fullscreen: bool = False
     window_size: tuple[int, int] = (1280, 720)
@@ -41,6 +46,23 @@ def _clamp_fps(fps: int) -> int:
         return fps
     # pick nearest
     return min(config.FPS_OPTIONS, key=lambda v: abs(v - fps))
+
+
+def _clamp_custom_depth(depth: object) -> int:
+    """Clamp custom engine max depth to CUSTOM_MAX_DEPTH_OPTIONS bounds."""
+    try:
+        val = int(depth)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return config.PY_EVAL_MAX_DEPTH
+    lo = min(config.CUSTOM_MAX_DEPTH_OPTIONS)
+    hi = max(config.CUSTOM_MAX_DEPTH_OPTIONS)
+    return max(lo, min(hi, val))
+
+
+def _normalize_engine_mode(mode: object, smart_fallback: bool = True) -> str:
+    if isinstance(mode, str) and mode.lower() in ENGINE_MODES:
+        return mode.lower()
+    return "auto" if smart_fallback else "custom"
 
 
 class SettingsStore:
@@ -100,9 +122,21 @@ class SettingsStore:
         if "window_size" in kwargs and isinstance(kwargs["window_size"], list):
             kwargs["window_size"] = tuple(kwargs["window_size"])
 
-        # Clamp fps
+        # Clamp fps and custom_max_depth
         if "fps" in kwargs:
             kwargs["fps"] = _clamp_fps(kwargs["fps"])
+        if "custom_max_depth" in kwargs:
+            kwargs["custom_max_depth"] = _clamp_custom_depth(kwargs["custom_max_depth"])
+
+        # Reconcile engine_mode and legacy smart_engine boolean
+        if "engine_mode" in data:
+            kwargs["engine_mode"] = _normalize_engine_mode(
+                data["engine_mode"],
+                smart_fallback=bool(kwargs.get("smart_engine", True)),
+            )
+            kwargs["smart_engine"] = kwargs["engine_mode"] != "custom"
+        else:
+            kwargs["engine_mode"] = "auto" if kwargs.get("smart_engine", True) else "custom"
 
         self._settings = Settings(**kwargs)
 
@@ -122,7 +156,17 @@ class SettingsStore:
                 raise ValueError(f"Unknown setting: {key!r}")
             if key == "fps":
                 value = _clamp_fps(value)
+            elif key == "engine_mode":
+                value = _normalize_engine_mode(value)
+            elif key == "custom_max_depth":
+                value = _clamp_custom_depth(value)
             setattr(self._settings, key, value)
+
+        if "engine_mode" in changes:
+            self._settings.smart_engine = self._settings.engine_mode != "custom"
+        elif "smart_engine" in changes:
+            self._settings.engine_mode = "auto" if self._settings.smart_engine else "custom"
+
         self.save()
         for cb in self._listeners:
             cb(self._settings)
@@ -150,6 +194,14 @@ class SettingsStore:
     @property
     def smart_engine(self) -> bool:
         return self._settings.smart_engine
+
+    @property
+    def engine_mode(self) -> str:
+        return self._settings.engine_mode
+
+    @property
+    def custom_max_depth(self) -> int:
+        return self._settings.custom_max_depth
 
     @property
     def fps(self) -> int:

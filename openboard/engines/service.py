@@ -52,8 +52,8 @@ class EngineService:
         self._requests_lock = threading.Lock()
 
         # Backend worker queues & threads
-        self._py_queue: queue.Queue[tuple[SearchRequest, Callable[[SearchResult], None], threading.Event] | None] = queue.Queue()
-        self._sf_queue: queue.Queue[tuple[SearchRequest, Callable[[SearchResult], None], threading.Event] | None] = queue.Queue()
+        self._py_queue: queue.Queue[tuple[SearchRequest, Callable[[SearchResult], None], threading.Event, str] | None] = queue.Queue()
+        self._sf_queue: queue.Queue[tuple[SearchRequest, Callable[[SearchResult], None], threading.Event, str] | None] = queue.Queue()
 
         self._py_cancel = threading.Event()
         self._sf_cancel = threading.Event()
@@ -134,7 +134,14 @@ class EngineService:
         sf_name = getattr(self.sf_backend, "name_str", None)
         elo_range = getattr(self.sf_backend, "elo_range", None)
         smart = getattr(self.settings, "smart_engine", True)
+        raw_mode = getattr(self.settings, "engine_mode", None)
+        if raw_mode in ("auto", "custom", "stockfish"):
+            engine_mode = raw_mode
+            smart = engine_mode != "custom"
+        else:
+            engine_mode = "auto" if smart else "custom"
         use_book = getattr(self.settings, "use_book", True)
+        custom_max_depth = int(getattr(self.settings, "custom_max_depth", config.PY_EVAL_MAX_DEPTH))
 
         return Capabilities(
             stockfish_available=self.sf_backend.available,
@@ -144,6 +151,8 @@ class EngineService:
             smart_engine=smart,
             use_book=use_book,
             cpu_count=os.cpu_count() or 1,
+            engine_mode=engine_mode,
+            custom_max_depth=custom_max_depth,
         )
 
     def submit(self, req_kwargs: dict[str, Any], on_done: Callable[[SearchResult], None]) -> int:
@@ -170,18 +179,20 @@ class EngineService:
         caps = self.capabilities()
         decision = choose_backend(base_req, caps)
         chosen_req = decision.request
+        route_reason = decision.reason
 
-        if decision.backend == "stockfish" and self.sf_backend.available:
-            self._sf_queue.put((chosen_req, on_done, cancel_event))
+        if decision.backend == "stockfish" and self.sf_backend.available and caps.engine_mode != "custom":
+            self._sf_queue.put((chosen_req, on_done, cancel_event, route_reason))
         else:
-            self._py_queue.put((chosen_req, on_done, cancel_event))
+            self.py_backend.configure(use_book=caps.use_book)
+            self._py_queue.put((chosen_req, on_done, cancel_event, route_reason))
 
         return req_id
 
     def _worker_loop(
         self,
         backend: EngineBackend,
-        work_queue: queue.Queue[tuple[SearchRequest, Callable[[SearchResult], None], threading.Event] | None],
+        work_queue: queue.Queue[tuple[SearchRequest, Callable[[SearchResult], None], threading.Event, str] | None],
     ) -> None:
         """Dedicated worker thread loop for an engine backend."""
         while not self._is_shutdown:
@@ -193,14 +204,14 @@ class EngineService:
             if item is None:
                 break
 
-            req, on_done, cancel_event = item
+            req, on_done, cancel_event, route_reason = item
 
             # Check if already cancelled / stale
             with self._requests_lock:
                 if req.request_id not in self._active_requests:
                     continue
 
-            result = self._execute_search_with_fallback(backend, req, cancel_event)
+            result = self._execute_search_with_fallback(backend, req, cancel_event, route_reason)
 
             with self._requests_lock:
                 if req.request_id in self._active_requests:
@@ -212,14 +223,35 @@ class EngineService:
         backend: EngineBackend,
         req: SearchRequest,
         cancel_event: threading.Event,
+        route_reason: str = "",
     ) -> SearchResult:
         """Execute search, attempting a fallback to the other backend if EngineError occurs."""
         try:
-            return backend.search(req, cancel_event)
+            res = backend.search(req, cancel_event)
+            if route_reason:
+                return SearchResult(
+                    request_id=res.request_id,
+                    best_uci=res.best_uci,
+                    score_cp=res.score_cp,
+                    mate_in=res.mate_in,
+                    depth=res.depth,
+                    nodes=res.nodes,
+                    seconds=res.seconds,
+                    pv_uci=res.pv_uci,
+                    backend=res.backend,
+                    reason=route_reason,
+                    book=res.book,
+                    cancelled=res.cancelled,
+                    error=res.error,
+                )
+            return res
         except EngineError as err:
             log.warning("Backend %s failed (%s); trying fallback", backend.name, err)
             other = self.py_backend if backend.name == "stockfish" else self.sf_backend
-            if other.available:
+            allow_other = other.available and (
+                other.name == "python" or self.capabilities().engine_mode != "custom"
+            )
+            if allow_other:
                 try:
                     fallback_res = other.search(req, cancel_event)
                     # Annotate reason

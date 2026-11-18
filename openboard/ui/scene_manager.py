@@ -39,7 +39,7 @@ class SceneManager:
 
     @property
     def current_name(self) -> str:
-        """Name of the currently active top scene (used by F2 overlay)."""
+        """Name of the currently active top scene."""
         if self._stack:
             return self._stack[-1].name
         return ""

@@ -64,17 +64,21 @@ def detect_input_type(text: str) -> str:
         One of ``'fen'``, ``'lan'``, or ``'san'``.
     """
     stripped = text.strip()
+    if not stripped:
+        return "fen"
 
-    # FEN: 5-6 space-separated fields AND first field has 7+ slashes
+    # Support 'FEN: ...' or '[FEN ...]'
+    if re.match(r"^\s*(?:FEN:\s*|\[FEN\s+)", stripped, re.IGNORECASE):
+        return "fen"
+
+    # FEN: first token has rank-separating slashes '/'
     parts = stripped.split()
-    if 5 <= len(parts) <= 6:
+    if parts:
         slashes = parts[0].count("/")
-        if slashes >= 7:
+        if slashes >= 1:
             return "fen"
 
     # LAN: contains move-like tokens with hyphens (e2-e4, Ng1-f3)
-    # Look for at least one hyphen in a move-like context.
-    # Piece moves like Ng1-f3: uppercase piece letter + from_sq + hyphen + to_sq
     if re.search(r"(?:^|\s)[KQRBN]?[a-h][1-8]-[a-h][1-8]", stripped):
         return "lan"
 
@@ -322,15 +326,24 @@ def san_line(start_fen: str, uci_moves: list[str], max_moves: int = 8) -> str:
         A string like ``'1. e4 e5 2. Nf3 Nc6'``.  Starts with ``'1...'``
         when it is Black's turn in *start_fen*.
     """
-    board = chess.Board(start_fen)
+    try:
+        board = chess.Board(start_fen)
+    except Exception:
+        return " ".join(uci_moves[:max_moves])
+
     parts: list[str] = []
     move_num = board.fullmove_number
     black_to_move_first = board.turn == chess.BLACK
 
     for ply, uci in enumerate(uci_moves[:max_moves]):
-        move = chess.Move.from_uci(uci)
-        san = board.san(move)
-        board.push(move)
+        try:
+            move = chess.Move.from_uci(uci)
+            if move not in board.legal_moves:
+                break
+            san = board.san(move)
+            board.push(move)
+        except Exception:
+            break
 
         is_white_move = board.turn == chess.BLACK  # after push, turn has flipped
         if is_white_move:

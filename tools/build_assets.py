@@ -123,7 +123,7 @@ def cmd_init_manifest(_args: argparse.Namespace) -> None:
         for n in ["bg_main", "bg_about", "bg_silhouettes", "bg_profile"]
     )
 
-    illus_blocks = _asset_block("illus_iso_board", "illus", 2, [832, 464], [[416, 232]], True)
+    illus_blocks = _asset_block("illus_iso_board", "illus", 1, [844, 616], [[844, 616]], True)
 
     card_blocks = "\n".join(
         _asset_block(n, "card", 2, [512, 384], [[256, 192]], True)

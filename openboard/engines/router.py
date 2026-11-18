@@ -26,35 +26,90 @@ class Decision:
 def choose_backend(req: SearchRequest, caps: Capabilities) -> Decision:
     """Choose backend (python or stockfish) based on strict precedence rules."""
     calib = caps.calibration
+    max_py_depth = max(1, int(caps.custom_max_depth))
 
-    # R0: Stockfish unavailable OR smart_engine is False -> Python
-    if not caps.stockfish_available or not caps.smart_engine:
-        cause = "stockfish missing" if not caps.stockfish_available else "smart engine off"
+    # Determine effective engine selection mode
+    if caps.engine_mode == "custom" or not caps.smart_engine:
+        effective_mode = "custom"
+    elif caps.engine_mode == "stockfish":
+        effective_mode = "stockfish"
+    else:
+        effective_mode = "auto"
+
+    # R0: Stockfish unavailable OR Custom Engine forced -> Python
+    if not caps.stockfish_available or effective_mode == "custom":
+        cause = "stockfish missing" if not caps.stockfish_available else "custom engine selected"
         adj_depth = req.depth
-        if req.time_s is not None and calib is not None:
-            adj_depth = max(1, max_depth_within(req.time_s * config.PY_TIME_FIT_RATIO, calib))
-        elif req.time_s is not None:
-            adj_depth = 1
-
+        adj_time = req.time_s
         adj_level = req.level
-        if req.level is not None and req.level >= 5:
-            adj_level = 5
+        adj_auto = False
+
+        if req.auto:
+            adj_depth = min(max_py_depth, int(config.AUTO_EVAL_PY["depth"]))
+            adj_time = float(config.AUTO_EVAL_PY["time"])
+            reason = f"{cause} -> built-in engine (auto depth {adj_depth})"
+        elif req.purpose == "evaluate":
+            if req.depth is not None:
+                if req.depth > max_py_depth:
+                    adj_depth = max_py_depth
+                    reason = f"{cause} -> built-in engine (capped to depth {adj_depth})"
+                else:
+                    adj_depth = req.depth
+                    reason = f"{cause} -> built-in engine (depth {adj_depth})"
+            elif req.time_s is not None:
+                if calib is not None:
+                    adj_depth = max(1, min(max_py_depth, max_depth_within(req.time_s * config.PY_TIME_FIT_RATIO, calib)))
+                else:
+                    adj_depth = min(max_py_depth, int(config.AUTO_EVAL_PY["depth"]))
+                reason = f"{cause} -> built-in engine (time {req.time_s:.1f}s)"
+            else:
+                adj_depth = min(max_py_depth, int(config.AUTO_EVAL_PY["depth"]))
+                reason = f"{cause} -> built-in engine"
+        else:
+            if req.level is not None and req.level >= 5:
+                adj_level = 5
+            reason = f"{cause} -> built-in engine (level {adj_level})" if adj_level is not None else f"{cause} -> built-in engine"
 
         new_req = SearchRequest(
             request_id=req.request_id,
             fen=req.fen,
             purpose=req.purpose,
             depth=adj_depth,
-            time_s=req.time_s,
+            time_s=adj_time,
             level=adj_level,
-            auto=req.auto,
+            auto=adj_auto,
             limit_strength=req.limit_strength,
         )
-        return Decision(backend="python", request=new_req, reason=cause)
+        return Decision(backend="python", request=new_req, reason=reason)
 
-    # R4: req.auto: Stockfish with AUTO_EVAL_SF, or Python with AUTO_EVAL_PY if SF missing
+    # R0b: Stockfish explicitly selected -> always Stockfish
+    if effective_mode == "stockfish":
+        if req.auto:
+            depth = int(config.AUTO_EVAL_SF["depth"])
+            time_s = float(config.AUTO_EVAL_SF["time"])
+            new_req = SearchRequest(
+                request_id=req.request_id,
+                fen=req.fen,
+                purpose=req.purpose,
+                depth=depth,
+                time_s=time_s,
+                level=req.level,
+                auto=False,
+                limit_strength=req.limit_strength,
+            )
+            return Decision(backend="stockfish", request=new_req, reason="stockfish selected (auto) -> Stockfish")
+        if req.purpose == "play" and req.level is not None:
+            return Decision(
+                backend="stockfish",
+                request=req,
+                reason=f"stockfish selected (level {req.level}) -> Stockfish",
+            )
+        return Decision(backend="stockfish", request=req, reason="stockfish selected -> Stockfish")
+
+    # R4: req.auto: Stockfish with AUTO_EVAL_SF
     if req.auto:
-        depth, time_s = config.AUTO_EVAL_SF
+        depth = int(config.AUTO_EVAL_SF["depth"])
+        time_s = float(config.AUTO_EVAL_SF["time"])
         new_req = SearchRequest(
             request_id=req.request_id,
             fen=req.fen,
@@ -65,7 +120,7 @@ def choose_backend(req: SearchRequest, caps: Capabilities) -> Decision:
             auto=False,
             limit_strength=req.limit_strength,
         )
-        return Decision(backend="stockfish", request=new_req, reason="auto mode -> stockfish")
+        return Decision(backend="stockfish", request=new_req, reason="auto mode -> Stockfish")
 
     # R1: purpose 'play': spec = config.LEVELS[level]
     if req.purpose == "play" and req.level is not None:
@@ -77,13 +132,25 @@ def choose_backend(req: SearchRequest, caps: Capabilities) -> Decision:
                 reason=f"level {req.level} -> stockfish only",
             )
         if spec.python_level is not None and spec.sf_elo is None:
+            if spec.python_level > max_py_depth:
+                return Decision(
+                    backend="stockfish",
+                    request=req,
+                    reason=f"level {req.level} (depth {spec.python_level}) > custom max depth {max_py_depth} -> Stockfish",
+                )
             return Decision(
                 backend="python",
                 request=req,
                 reason=f"level {req.level} -> built-in engine",
             )
-        # Both set (level 5): Python if estimate fits ratio, else Stockfish
+        # Both set (level 5): Python if within max_py_depth (or default) and estimate fits ratio, else Stockfish
         if spec.python_level is not None and spec.sf_elo is not None:
+            if max_py_depth < config.PY_EVAL_MAX_DEPTH:
+                return Decision(
+                    backend="stockfish",
+                    request=req,
+                    reason=f"level {req.level} > custom max depth {max_py_depth} -> Stockfish",
+                )
             py_depth = spec.python_level
             time_budget = req.time_s if req.time_s is not None else (spec.sf_movetime_s or 1.0)
             budget = time_budget * config.PY_TIME_FIT_RATIO
@@ -101,15 +168,15 @@ def choose_backend(req: SearchRequest, caps: Capabilities) -> Decision:
 
     # R2: purpose 'evaluate' with explicit depth
     if req.purpose == "evaluate" and req.depth is not None:
-        if req.depth > config.PY_EVAL_MAX_DEPTH:
+        if req.depth > max_py_depth:
             return Decision(
                 backend="stockfish",
                 request=req,
-                reason=f"depth {req.depth} > {config.PY_EVAL_MAX_DEPTH} -> Stockfish",
+                reason=f"depth {req.depth} > {max_py_depth} -> Stockfish",
             )
         # Otherwise Python if no time limit or estimate fits ratio, else Stockfish
         if req.time_s is None:
-            if calib is None and req.depth > 2:
+            if calib is None and max_py_depth <= config.PY_EVAL_MAX_DEPTH and req.depth > 2:
                 return Decision(
                     backend="stockfish",
                     request=req,
@@ -118,7 +185,7 @@ def choose_backend(req: SearchRequest, caps: Capabilities) -> Decision:
             return Decision(
                 backend="python",
                 request=req,
-                reason=f"depth {req.depth} <= {config.PY_EVAL_MAX_DEPTH} -> built-in engine",
+                reason=f"depth {req.depth} <= {max_py_depth} -> built-in engine",
             )
         else:
             budget = req.time_s * config.PY_TIME_FIT_RATIO

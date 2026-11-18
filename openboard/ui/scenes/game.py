@@ -21,7 +21,7 @@ from openboard.core.session import GameSession, PlayerInfo, SessionEvent
 from openboard.ui import theme
 from openboard.ui.board_view import BoardView
 from openboard.ui.scenes.base import Scene
-from openboard.ui.theme import ACCENT, BORDER, CARD, INK, PURPLE, SHADOW, TINT, draw_panel, draw_text
+from openboard.ui.theme import ACCENT, BORDER, CARD, INK, PURPLE, SECONDARY, SHADOW, TINT, draw_panel, draw_text, fit_text
 from openboard.ui.widgets import Button, ScrollList
 
 log = logging.getLogger("openboard.ui.scenes.game")
@@ -69,18 +69,18 @@ class GameScene(Scene):
             self.board_view.set_interactive("both")
 
         # Right column layout
-        rc_x = 880
-        rc_w = 640
+        rc_x = 930
+        rc_w = 580
 
         # Top bar: MENU button
-        self.menu_btn = Button((config.DESIGN_W - 180, 48, 120, 52), "MENU", self._on_menu_click, style="secondary")
+        self.menu_btn = Button((1350, 48, 160, 52), "MENU", self._on_menu_click, style="secondary")
 
         # Player cards: Top card is opponent, Bottom card is local player
         self.top_card_rect = pygame.Rect(rc_x, 136, rc_w, 100)
-        self.bot_card_rect = pygame.Rect(rc_x, 256, rc_w, 100)
+        self.bot_card_rect = pygame.Rect(rc_x, 260, rc_w, 100)
 
         # Moves ScrollList
-        moves_h = 290
+        moves_h = 300
         moves_y = 420
         self.moves_list = ScrollList(
             (rc_x, moves_y, rc_w, moves_h),
@@ -88,12 +88,17 @@ class GameScene(Scene):
             draw_item=self._draw_move_item,
             items=[],
         )
+        self._last_move_count: int = 0
 
         # Action buttons
         btn_y = moves_y + moves_h + 20
-        btn_w = (rc_w - 20) // 2
-        self.draw_btn = Button((rc_x, btn_y, btn_w, 60), "OFFER DRAW", self._on_draw_click, style="secondary")
-        self.resign_btn = Button((rc_x + btn_w + 20, btn_y, btn_w, 60), "RESIGN", self._on_resign_click, style="secondary")
+        if self.mode == "pass_play":
+            btn_w = (rc_w - 20) // 2
+            self.draw_btn: Button | None = Button((rc_x, btn_y, btn_w, 56), "DRAW", self._on_draw_click, style="secondary")
+            self.resign_btn = Button((rc_x + btn_w + 20, btn_y, btn_w, 56), "RESIGN", self._on_resign_click, style="secondary")
+        else:
+            self.draw_btn = None
+            self.resign_btn = Button((rc_x, btn_y, rc_w, 56), "RESIGN", self._on_resign_click, style="secondary")
 
         # Engine turn management
         self._engine_thinking: bool = False
@@ -116,7 +121,7 @@ class GameScene(Scene):
     def _draw_move_item(self, surf: pygame.Surface, item: tuple[int, str, str | None], rect: pygame.Rect, idx: int, hovered: bool) -> None:
         num, white_san, black_san = item
         num_str = f"{num}."
-        draw_text(surf, num_str, "label", TINT, (rect.x + 12, rect.centery), anchor="midleft")
+        draw_text(surf, num_str, "label", SECONDARY, (rect.x + 12, rect.centery), anchor="midleft")
         draw_text(surf, white_san, "label", INK, (rect.x + 80, rect.centery), anchor="midleft")
         if black_san:
             draw_text(surf, black_san, "label", INK, (rect.x + 240, rect.centery), anchor="midleft")
@@ -156,34 +161,28 @@ class GameScene(Scene):
         )
 
     def _on_draw_click(self) -> None:
-        if self.session.is_over:
+        if self.session.is_over or self.mode != "pass_play":
             return
 
-        if self.mode == "pass_play":
-            other_player = self.session.white if self.session.turn == chess.BLACK else self.session.black
+        offering_player = self.session.current_player
+        other_player = self.session.black if self.session.turn == chess.WHITE else self.session.white
+        self.session.offer_draw(self.session.turn)
 
-            def on_confirm(yes: bool) -> None:
-                if yes:
-                    self.session.accept_draw()
-                else:
-                    self.session.decline_draw()
-                    self._show_temp_status("DRAW DECLINED")
-
-            self.ctx.scenes.push(
-                "confirm",
-                title="DRAW OFFER",
-                message=f"{other_player.name}, do you accept a draw?",
-                yes_label="ACCEPT",
-                no_label="DECLINE",
-                on_result=on_confirm,
-            )
-        else:
-            # VS Engine: engine accepts only after move 30 when score is <= +0.20
-            fullmove_number = self.session.board.fullmove_number
-            if fullmove_number >= 30 and abs(self._last_engine_eval_score) <= 0.20:
+        def on_confirm(yes: bool) -> None:
+            if yes:
                 self.session.accept_draw()
             else:
-                self._show_temp_status("ENGINE DECLINED DRAW")
+                self.session.decline_draw()
+                self._show_temp_status("DRAW DECLINED")
+
+        self.ctx.scenes.push(
+            "confirm",
+            title="DRAW OFFER",
+            message=f"{offering_player.name} offers a draw. {other_player.name}, do you accept?",
+            yes_label="ACCEPT",
+            no_label="DECLINE",
+            on_result=on_confirm,
+        )
 
     def _show_temp_status(self, msg: str, duration: float = 3.0) -> None:
         self._temp_status_msg = msg
@@ -221,9 +220,11 @@ class GameScene(Scene):
 
         def apply_move() -> None:
             if result.best_uci and not self.session.is_over:
-                self.session.apply_uci(result.best_uci)
+                res = self.session.apply_uci(result.best_uci)
                 self.board_view.set_board(self.session.board)
                 self.board_view.set_marks(self.session.last_move, self.session.check_square)
+                if res.move:
+                    self.board_view.animate_move(res.move, ms=150)
             self._engine_thinking = False
             self._engine_req_id = None
 
@@ -236,7 +237,7 @@ class GameScene(Scene):
     def handle_event(self, event: pygame.event.Event) -> None:
         if self.menu_btn.handle_event(event):
             return
-        if self.draw_btn.handle_event(event):
+        if self.draw_btn and self.draw_btn.handle_event(event):
             return
         if self.resign_btn.handle_event(event):
             return
@@ -265,7 +266,8 @@ class GameScene(Scene):
 
     def update(self, dt: float) -> None:
         self.menu_btn.update(dt)
-        self.draw_btn.update(dt)
+        if self.draw_btn:
+            self.draw_btn.update(dt)
         self.resign_btn.update(dt)
         self.board_view.update(dt)
 
@@ -293,9 +295,12 @@ class GameScene(Scene):
             elif ev == SessionEvent.GAME_OVER:
                 self.ctx.sfx("game_end")
 
-        # Moves list update
-        self.moves_list.set_items(self.session.move_rows)
-        self.moves_list.scroll_to_bottom()
+        # Moves list update — only auto-scroll when new moves are played so user scrolling is preserved
+        move_count = len(self.session.san_moves)
+        if move_count != self._last_move_count:
+            self._last_move_count = move_count
+            self.moves_list.set_items(self.session.move_rows)
+            self.moves_list.scroll_to_bottom()
 
         # Engine dots animation
         if self._engine_thinking:
@@ -356,18 +361,26 @@ class GameScene(Scene):
     def _show_game_over_dialog(self) -> None:
         headline = self.session.status_text
 
-        def on_choice(evaluate_chosen: bool) -> None:
-            if evaluate_chosen:
-                self.ctx.scenes.go("evaluate", moves=self.session.san_moves, start_fen=self.session.board.starting_fen)
+        def on_choice(play_again_chosen: bool) -> None:
+            if play_again_chosen:
+                self.ctx.scenes.go(
+                    "game",
+                    mode=self.mode,
+                    white=self.session.white,
+                    black=self.session.black,
+                    time_control=self.time_control,
+                    level=self.level,
+                    player1_color=self.player1_color,
+                )
             else:
-                self.ctx.scenes.go("main_menu")
+                self.ctx.scenes.go("opponent_select")
 
         self.ctx.scenes.push(
             "confirm",
             title="GAME OVER",
             message=headline,
-            yes_label="EVALUATE",
-            no_label="MAIN MENU",
+            yes_label="PLAY AGAIN",
+            no_label="BACK",
             on_result=on_choice,
         )
 
@@ -376,9 +389,9 @@ class GameScene(Scene):
 
         # Top title & mode
         mode_title = "PASS & PLAY" if self.mode == "pass_play" else "VS ENGINE"
+        draw_text(surf, mode_title, "heading", INK, (120, 60), anchor="midleft")
         tc_label = getattr(self.time_control, "label", "RAPID · 10 + 0")
-        header_str = f"{mode_title}   ·   {tc_label}"
-        draw_text(surf, header_str, "heading", INK, (120, 60), anchor="midleft")
+        draw_text(surf, tc_label, "label", PURPLE, (self.menu_btn.rect.left - 32, self.menu_btn.rect.centery), anchor="midright")
 
         self.menu_btn.draw(surf)
 
@@ -405,13 +418,14 @@ class GameScene(Scene):
         else:
             status_text = self.session.status_text
 
-        draw_text(surf, status_text, "heading", ACCENT, (880 + 320, status_y), anchor="center")
+        draw_text(surf, fit_text(status_text, "heading", 560), "heading", ACCENT, (930 + 290, status_y), anchor="center")
 
         # Moves list
         self.moves_list.draw(surf)
 
         # Action buttons
-        self.draw_btn.draw(surf)
+        if self.draw_btn:
+            self.draw_btn.draw(surf)
         self.resign_btn.draw(surf)
 
     def _draw_player_card(self, surf: pygame.Surface, rect: pygame.Rect, player: PlayerInfo, color: chess.Color) -> None:
@@ -423,8 +437,8 @@ class GameScene(Scene):
 
         # Name & side label
         side_str = "WHITE" if color == chess.WHITE else "BLACK"
-        draw_text(surf, player.name.upper(), "label", text_col, (rect.x + 24, rect.y + 24), anchor="topleft")
-        draw_text(surf, side_str, "small", TINT if is_turn else PURPLE, (rect.x + 24, rect.bottom - 24), anchor="bottomleft")
+        draw_text(surf, fit_text(player.name.upper(), "label", rect.width - 230), "label", text_col, (rect.x + 24, rect.y + 24), anchor="topleft")
+        draw_text(surf, side_str, "small", TINT if is_turn else SECONDARY, (rect.x + 24, rect.bottom - 24), anchor="bottomleft")
 
         # Clock
         rem = self.session.clock.remaining(color)

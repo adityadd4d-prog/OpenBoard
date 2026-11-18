@@ -7,6 +7,7 @@ Pure-Python chess clock — no pygame, no threads.
 from __future__ import annotations
 
 import logging
+import math
 import time as _time
 from typing import Callable
 
@@ -18,6 +19,7 @@ log = logging.getLogger("openboard.core.clock")
 def format_clock(seconds: float) -> str:
     """Format *seconds* as a clock string.
 
+    * ``∞`` for unlimited / no-clock games (``math.inf``).
     * ``MM:SS`` for 20 seconds and above.
     * ``M:SS.t`` (tenths) below 20 seconds.
     * Never returns a negative string; clamps to ``0:00.0``.
@@ -28,6 +30,8 @@ def format_clock(seconds: float) -> str:
     Returns:
         A human-readable clock string.
     """
+    if math.isinf(seconds):
+        return "∞"
     if seconds < 0.0:
         seconds = 0.0
     if seconds < 20.0:
@@ -63,7 +67,9 @@ class ChessClock:
     ) -> None:
         self._now = now
         self._increment: float = float(time_control.increment_s)  # type: ignore[attr-defined]
-        base: float = float(time_control.minutes) * 60.0  # type: ignore[attr-defined]
+        raw_minutes: float = float(time_control.minutes)  # type: ignore[attr-defined]
+        self._unlimited: bool = raw_minutes <= 0.0
+        base: float = math.inf if self._unlimited else raw_minutes * 60.0
         self._remaining: dict[chess.Color, float] = {
             chess.WHITE: base,
             chess.BLACK: base,
@@ -72,6 +78,11 @@ class ChessClock:
         self._last_tick: float | None = None
         self._paused: bool = False
         self._started: bool = False
+
+    @property
+    def is_unlimited(self) -> bool:
+        """Return True when this clock is configured for No Clock (unlimited time)."""
+        return self._unlimited
 
     # ------------------------------------------------------------------
     # Control
@@ -83,6 +94,9 @@ class ChessClock:
         Args:
             first_to_move: :data:`chess.WHITE` or :data:`chess.BLACK`.
         """
+        if self._unlimited:
+            self._started = True
+            return
         self._running = first_to_move
         self._last_tick = self._now()
         self._paused = False
@@ -93,9 +107,9 @@ class ChessClock:
         """Deduct elapsed time from the running side.
 
         Call this every frame / game-loop tick.  Has no effect when the clock
-        has not been started, is paused, or a side has flagged.
+        has not been started, is paused, is unlimited, or a side has flagged.
         """
-        if self._running is None or self._last_tick is None:
+        if self._unlimited or self._running is None or self._last_tick is None:
             return
         now = self._now()
         elapsed = now - self._last_tick
@@ -110,7 +124,7 @@ class ChessClock:
         Args:
             color: The side whose move just ended.
         """
-        if not self._started:
+        if self._unlimited or not self._started:
             return
         # Apply increment to the side that just moved.
         self._remaining[color] = self._remaining[color] + self._increment
@@ -179,6 +193,8 @@ class ChessClock:
         Returns:
             :data:`chess.WHITE`, :data:`chess.BLACK`, or ``None``.
         """
+        if self._unlimited:
+            return None
         for color in (chess.WHITE, chess.BLACK):
             if self._remaining[color] <= 0.0:
                 return color

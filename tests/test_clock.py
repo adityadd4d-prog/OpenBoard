@@ -173,3 +173,22 @@ class TestChessClock:
         clock.update()
         # No press → no increment
         assert clock.remaining(chess.WHITE) == pytest.approx(60.0 - 10.0)
+
+    def test_unlimited_no_clock(self) -> None:
+        import math
+        from openboard import config
+
+        t = [0.0]
+        clock = ChessClock(config.UNLIMITED, now=lambda: t[0])
+        assert clock.is_unlimited is True
+        clock.start(chess.WHITE)
+        t[0] = 99999.0
+        clock.update()
+        assert math.isinf(clock.remaining(chess.WHITE))
+        assert math.isinf(clock.remaining(chess.BLACK))
+        assert clock.flagged() is None
+        assert format_clock(clock.remaining(chess.WHITE)) == "∞"
+        clock.press(chess.WHITE)
+        t[0] = 199999.0
+        clock.update()
+        assert clock.flagged() is None

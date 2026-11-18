@@ -55,10 +55,12 @@ class TimeControl:
 
 BLITZ: TimeControl = TimeControl(key="blitz", label="BLITZ 3 + 2", minutes=3, increment_s=2)
 RAPID: TimeControl = TimeControl(key="rapid", label="RAPID 10 + 0", minutes=10, increment_s=0)
+UNLIMITED: TimeControl = TimeControl(key="unlimited", label="NO CLOCK", minutes=0, increment_s=0)
 
 TIME_CONTROLS: dict[str, TimeControl] = {
     BLITZ.key: BLITZ,
     RAPID.key: RAPID,
+    UNLIMITED.key: UNLIMITED,
 }
 
 # ---------------------------------------------------------------------------
@@ -94,6 +96,7 @@ LEVELS: dict[int, LevelSpec] = {
 # ---------------------------------------------------------------------------
 
 PY_EVAL_MAX_DEPTH: int = 4
+CUSTOM_MAX_DEPTH_OPTIONS: tuple[int, ...] = (1, 2, 3, 4, 5, 6)
 PY_TIME_FIT_RATIO: float = 0.6
 PY_MIN_USEFUL_DEPTH: int = 4
 

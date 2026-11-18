@@ -98,3 +98,31 @@ def test_unknown_keys_ignored_on_load(tmp_path: Path) -> None:
 
     assert store.audio is False
     assert store.fps == 60
+
+
+def test_engine_mode_persistence_and_legacy_migration(tmp_path: Path) -> None:
+    # Legacy JSON with only smart_engine=False migrates to engine_mode='custom'
+    p = tmp_path / "settings.json"
+    p.write_text(json.dumps({"smart_engine": False}), encoding="utf-8")
+    store = _store(tmp_path)
+    assert store.engine_mode == "custom"
+    assert store.smart_engine is False
+
+    # Switching to stockfish persists and syncs smart_engine=True
+    store.set(engine_mode="stockfish")
+    store2 = _store(tmp_path)
+    assert store2.engine_mode == "stockfish"
+    assert store2.smart_engine is True
+
+    # Invalid mode falls back safely to 'auto'
+    store2.set(engine_mode="invalid_value")
+    assert store2.engine_mode == "auto"
+
+    # custom_max_depth persists and clamps to valid bounds
+    store2.set(custom_max_depth=6)
+    store3 = _store(tmp_path)
+    assert store3.custom_max_depth == 6
+    store3.set(custom_max_depth=99)
+    assert store3.custom_max_depth == max(config.CUSTOM_MAX_DEPTH_OPTIONS)
+    store3.set(custom_max_depth=0)
+    assert store3.custom_max_depth == min(config.CUSTOM_MAX_DEPTH_OPTIONS)

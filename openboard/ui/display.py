@@ -38,11 +38,6 @@ class DisplayManager:
         self._fullscreen: bool = getattr(settings, "fullscreen", False)
         self._fs_debounce: float = 0.0
 
-        # Reference overlay (F2)
-        self._ref_surface: pygame.Surface | None = None
-        self._ref_scene_name: str | None = None
-        self._ref_visible: bool = False
-
         self._create_window()
 
     def _create_window(self) -> None:
@@ -122,6 +117,12 @@ class DisplayManager:
 
             return pygame.event.Event(event.type, new_dict)
 
+        if event.type == pygame.MOUSEWHEEL:
+            x, y = self.window_to_design(pygame.mouse.get_pos())
+            new_dict = dict(event.__dict__)
+            new_dict["pos"] = (int(x), int(y))
+            return pygame.event.Event(event.type, new_dict)
+
         return event
 
     def toggle_fullscreen(self) -> None:
@@ -143,40 +144,6 @@ class DisplayManager:
 
         self._recalc_viewport()
 
-    def toggle_reference(self, scene_name: str) -> None:
-        """Toggle 50% alpha reference overlay for the named scene (F2)."""
-        if self._ref_visible and self._ref_scene_name == scene_name:
-            self._ref_visible = False
-            return
-
-        ref_dir = paths.reference_dir()
-        alias_map = {
-            "opponent_select": "opponent",
-            "pass_play_setup": "pass_play",
-            "vs_engine_setup": "vs_engine",
-        }
-        ref_file = ref_dir / f"{scene_name}.png"
-        if not ref_file.exists() and scene_name in alias_map:
-            ref_file = ref_dir / f"{alias_map[scene_name]}.png"
-
-        if not ref_file.exists():
-            log.info("Reference mockup not found at %s", ref_file)
-            self._ref_visible = False
-            return
-
-        try:
-            img = pygame.image.load(str(ref_file)).convert_alpha()
-            if img.get_size() != (config.DESIGN_W, config.DESIGN_H):
-                img = pygame.transform.smoothscale(img, (config.DESIGN_W, config.DESIGN_H))
-            img.set_alpha(128)  # 50% alpha
-            self._ref_surface = img
-            self._ref_scene_name = scene_name
-            self._ref_visible = True
-            log.info("F2 reference overlay enabled for: %s", scene_name)
-        except Exception as exc:
-            log.warning("Could not load reference overlay: %s", exc)
-            self._ref_visible = False
-
     def set_hand_cursor(self, hand: bool) -> None:
         """Switch between standard pointer and clickable hand cursor."""
         cursor = pygame.SYSTEM_CURSOR_HAND if hand else pygame.SYSTEM_CURSOR_ARROW
@@ -194,9 +161,6 @@ class DisplayManager:
         win.fill(INK)
 
         draw_surf = self.surface
-        if self._ref_visible and self._ref_surface is not None:
-            draw_surf = self.surface.copy()
-            draw_surf.blit(self._ref_surface, (0, 0))
 
         if self._scale == 1.0:
             win.blit(draw_surf, (self._offset_x, self._offset_y))

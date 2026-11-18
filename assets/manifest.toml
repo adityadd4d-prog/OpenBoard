@@ -142,9 +142,9 @@ alpha = false
 [[asset]]
 name = "illus_iso_board"
 kind = "illus"
-scale = 2
-src_px = [832, 464]
-out = [[416, 232]]
+scale = 1
+src_px = [844, 616]
+out = [[844, 616]]
 alpha = true
 
 # ------------------------------------------------------------
@@ -153,17 +153,17 @@ alpha = true
 [[asset]]
 name = "card_pass_play"
 kind = "card"
-scale = 2
-src_px = [512, 384]
-out = [[256, 192]]
+scale = 1
+src_px = [460, 504]
+out = [[460, 504]]
 alpha = true
 
 [[asset]]
 name = "card_vs_engine"
 kind = "card"
-scale = 2
-src_px = [512, 384]
-out = [[256, 192]]
+scale = 1
+src_px = [460, 504]
+out = [[460, 504]]
 alpha = true
 
 # ------------------------------------------------------------

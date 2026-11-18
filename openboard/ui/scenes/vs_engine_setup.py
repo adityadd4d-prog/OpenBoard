@@ -16,7 +16,7 @@ from openboard import config
 from openboard.core.session import PlayerInfo
 from openboard.ui import theme
 from openboard.ui.scenes.base import Scene
-from openboard.ui.theme import BORDER, CARD, INK, SHADOW, TINT, draw_panel, draw_text
+from openboard.ui.theme import BORDER, CARD, INK, SECONDARY, SHADOW, TINT, draw_panel, draw_text
 from openboard.ui.widgets import Button, Chips
 
 
@@ -139,8 +139,8 @@ class VsEngineSetupScene(Scene):
 
         # Engine level label & captions
         draw_text(surf, "DIFFICULTY LEVEL", "label", INK, (self.panel_rect.x + 48, self.panel_rect.y + 94), anchor="bottomleft")
-        draw_text(surf, "BEGINNER", "small", TINT, (self.panel_rect.x + 48, self.panel_rect.y + 186), anchor="topleft")
-        draw_text(surf, "EXPERT", "small", TINT, (self.panel_rect.right - 48, self.panel_rect.y + 186), anchor="topright")
+        draw_text(surf, "BEGINNER", "small", SECONDARY, (self.panel_rect.x + 48, self.panel_rect.y + 186), anchor="topleft")
+        draw_text(surf, "EXPERT", "small", SECONDARY, (self.panel_rect.right - 48, self.panel_rect.y + 186), anchor="topright")
 
         # Time control label
         draw_text(surf, "TIME CONTROL", "label", INK, (self.panel_rect.x + 48, self.panel_rect.y + 234), anchor="bottomleft")

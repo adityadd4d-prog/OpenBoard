@@ -31,7 +31,9 @@ BG: tuple[int, int, int] = (243, 232, 250)      # #F3E8FA
 CARD: tuple[int, int, int] = (251, 244, 255)     # #FBF4FF
 INK: tuple[int, int, int] = (48, 42, 59)         # #302A3B
 PURPLE: tuple[int, int, int] = (160, 133, 187)   # #A085BB
+WORDMARK_PURPLE: tuple[int, int, int] = (148, 101, 232)  # #9465E8
 ACCENT: tuple[int, int, int] = (117, 84, 137)    # #755489
+SECONDARY: tuple[int, int, int] = (63, 111, 108) # #3F6F6C (secondary text / muted labels)
 TINT: tuple[int, int, int] = (227, 213, 236)     # #E3D5EC
 CARD_BORDER: tuple[int, int, int] = (199, 177, 210)  # #C7B1D2
 DANGER: tuple[int, int, int] = (220, 53, 69)     # red for check / invalid
@@ -50,10 +52,11 @@ SHADOW: int = 6
 
 # Map role -> (weight, size_px)
 _FONT_SPEC: dict[str, tuple[str, int]] = {
-    "wordmark": ("ExtraBold", 110),
-    "title":    ("Bold", 30),
+    "wordmark": ("ExtraBold", 148),
+    "title":    ("Bold", 40),
     "heading":  ("Bold", 24),
     "label":    ("Bold", 18),
+    "coord":    ("Bold", 16),
     "body":     ("Regular", 18),
     "small":    ("Regular", 14),
     "number":   ("Bold", 56),
@@ -204,22 +207,72 @@ def fit_text(text: str, role: str, max_w: int) -> str:
 
 
 def wrap_text(text: str, role: str, max_w: int) -> list[str]:
-    """Word-wrap *text* to *max_w* pixels and return a list of lines."""
+    """Word-wrap *text* to *max_w* pixels and return a list of lines.
+
+    Preserves explicit newlines and breaks single tokens wider than *max_w*
+    at character boundaries so no line overflows *max_w*.
+    """
+    if max_w <= 0:
+        return [text]
     f = font(role)
-    words = text.split()
     lines: list[str] = []
-    current = ""
-    for word in words:
-        candidate = (current + " " + word).strip()
-        if f.size(candidate)[0] <= max_w:
-            current = candidate
-        else:
-            if current:
-                lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
+
+    for paragraph in text.split("\n"):
+        words = paragraph.split()
+        if not words:
+            lines.append("")
+            continue
+        current = ""
+        for word in words:
+            candidate = (current + " " + word).strip()
+            if f.size(candidate)[0] <= max_w:
+                current = candidate
+            else:
+                if current:
+                    lines.append(current)
+                    current = ""
+                if f.size(word)[0] <= max_w:
+                    current = word
+                else:
+                    # Break overly long token (e.g. URL or FEN) at char boundary
+                    chunk = ""
+                    for ch in word:
+                        if f.size(chunk + ch)[0] <= max_w or not chunk:
+                            chunk += ch
+                        else:
+                            lines.append(chunk)
+                            chunk = ch
+                    current = chunk
+        if current:
+            lines.append(current)
     return lines or [""]
+
+
+def draw_wrapped_text(
+    surf: pygame.Surface,
+    text: str,
+    role: str,
+    color: tuple,
+    pos: tuple[int, int],
+    max_w: int,
+    line_gap: int = 4,
+    anchor: str = "topleft",
+    max_lines: int | None = None,
+) -> int:
+    """Wrap and render *text* within *max_w* pixels, returning the bottom y coordinate."""
+    f = font(role)
+    lines = wrap_text(text, role, max_w)
+    if max_lines is not None and len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = fit_text(lines[-1] + "…", role, max_w)
+
+    line_h = f.get_height()
+    x, y = pos
+    for line in lines:
+        if line:
+            draw_text(surf, line, role, color, (x, y), anchor=anchor)
+        y += line_h + line_gap
+    return y - line_gap if lines else y
 
 
 def lerp_color(a: tuple, b: tuple, t: float) -> tuple:

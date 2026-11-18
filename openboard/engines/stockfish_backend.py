@@ -135,15 +135,35 @@ class StockfishBackend(EngineBackend):
                 if self.elo_range:
                     target_elo = max(self.elo_range[0], min(self.elo_range[1], target_elo))
                 cfg["UCI_Elo"] = target_elo
+                if "Skill Level" in engine.options:
+                    cfg["Skill Level"] = 20
+            elif not spec.sf_only:
+                # Levels 1-4 when user explicitly forces Stockfish: scale down strength & movetime
+                skill_map = {1: 0, 2: 3, 3: 6, 4: 10}
+                if "UCI_LimitStrength" in engine.options:
+                    cfg["UCI_LimitStrength"] = True
+                    if self.elo_range:
+                        cfg["UCI_Elo"] = self.elo_range[0]
+                if "Skill Level" in engine.options:
+                    cfg["Skill Level"] = skill_map.get(request.level, 5)
             else:
                 if "UCI_LimitStrength" in engine.options:
                     cfg["UCI_LimitStrength"] = False
+                if "Skill Level" in engine.options:
+                    cfg["Skill Level"] = 20
 
-            movetime = spec.sf_movetime_s or request.time_s or 1.0
+            if spec.sf_movetime_s is not None:
+                movetime = spec.sf_movetime_s
+            elif not spec.sf_only:
+                movetime = 0.2 + 0.05 * request.level
+            else:
+                movetime = request.time_s or 1.0
             limit = chess.engine.Limit(time=movetime)
         else:
             if "UCI_LimitStrength" in engine.options:
                 cfg["UCI_LimitStrength"] = False
+            if "Skill Level" in engine.options:
+                cfg["Skill Level"] = 20
             limit_kw: dict[str, Any] = {}
             if request.depth is not None:
                 limit_kw["depth"] = request.depth

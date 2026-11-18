@@ -157,8 +157,10 @@ def test_latest_wins_cancellation() -> None:
         on_done=results.append,
     )
 
-    time.sleep(0.3)
-    svc.poll()
+    t0 = time.monotonic()
+    while not results and time.monotonic() - t0 < 1.0:
+        time.sleep(0.05)
+        svc.poll()
 
     # The stale result (id1) should have been dropped or cancelled
     ids_received = [r.request_id for r in results]
@@ -195,4 +197,75 @@ def test_cancel_returns_in_under_300ms() -> None:
     svc.cancel(req_id)
     elapsed = time.monotonic() - t0
     assert elapsed < 0.3, f"cancel took {elapsed:.3f}s (must be < 0.3s)"
+    svc.shutdown()
+
+
+def test_service_smart_engine_off_never_uses_stockfish_and_preserves_reason() -> None:
+    class SmartOffSettings:
+        smart_engine = False
+        use_book = False
+        python_calibration = None
+        calibration_key = None
+
+    py = FakeBackend("python", available=True, fail=False)
+    sf = FakeBackend("stockfish", available=True, fail=False)
+    svc = EngineService(SmartOffSettings(), backends=(py, sf))
+    svc.start()
+
+    results: list[SearchResult] = []
+    # High depth evaluate + high level play must both stay strictly on Python
+    svc.submit(
+        {"fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "purpose": "evaluate", "depth": 12},
+        on_done=results.append,
+    )
+    time.sleep(0.1)
+    svc.poll()
+
+    assert len(results) == 1
+    assert results[0].backend == "python"
+    assert "custom engine" in results[0].reason
+    assert sf.search_calls == 0
+
+    # Also verify that if Python fails while smart_engine=False, Stockfish is NOT used as fallback
+    py.fail = True
+    fail_results: list[SearchResult] = []
+    svc.submit(
+        {"fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "purpose": "play", "level": 7},
+        on_done=fail_results.append,
+    )
+    time.sleep(0.15)
+    svc.poll()
+    assert sf.search_calls == 0
+    assert len(fail_results) == 1
+    assert fail_results[0].backend == "python"
+    assert fail_results[0].error is not None
+    svc.shutdown()
+
+
+def test_service_stockfish_mode_routes_all_requests_to_stockfish() -> None:
+    class StockfishOnlySettings:
+        smart_engine = True
+        engine_mode = "stockfish"
+        use_book = True
+        python_calibration = None
+        calibration_key = None
+
+    py = FakeBackend("python", available=True, fail=False)
+    sf = FakeBackend("stockfish", available=True, fail=False)
+    svc = EngineService(StockfishOnlySettings(), backends=(py, sf))
+    svc.start()
+
+    results: list[SearchResult] = []
+    svc.submit(
+        {"fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "purpose": "play", "level": 1},
+        on_done=results.append,
+    )
+    time.sleep(0.1)
+    svc.poll()
+
+    assert len(results) == 1
+    assert results[0].backend == "stockfish"
+    assert "stockfish selected" in results[0].reason
+    assert py.search_calls == 0
+    assert sf.search_calls == 1
     svc.shutdown()

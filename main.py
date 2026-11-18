@@ -68,7 +68,13 @@ def setup_logging() -> None:
 def run_selftest() -> int:
     """Headless self-test verifying both backends answer properly. Outputs JSON."""
     ctx = build_context(headless=True)
-    time.sleep(0.3)
+
+    # Wait up to 3 seconds for backends to finish asynchronous initialization
+    t_init = time.monotonic()
+    while time.monotonic() - t_init < 3.0:
+        if ctx.engines.sf_backend.available or not paths.stockfish_candidates():
+            break
+        time.sleep(0.05)
 
     py_res = None
     sf_res = None
@@ -83,28 +89,41 @@ def run_selftest() -> int:
         if py_res and (sf_res or not ctx.engines.sf_backend.available):
             done.set()
 
-    # Search request
+    # Test both backends explicitly regardless of the user's saved engine_mode preference
     fen = chess.STARTING_FEN
-    ctx.engines.submit({"fen": fen, "purpose": "play", "level": 1}, on_done)
-    if ctx.engines.sf_backend.available:
-        ctx.engines.submit({"fen": fen, "purpose": "evaluate", "depth": 6}, on_done)
+    saved_mode = ctx.settings.current.engine_mode
+    saved_smart = ctx.settings.current.smart_engine
+    try:
+        ctx.settings.current.engine_mode = "custom"
+        ctx.settings.current.smart_engine = False
+        ctx.engines.submit({"fen": fen, "purpose": "play", "level": 1}, on_done)
+        if ctx.engines.sf_backend.available:
+            ctx.settings.current.engine_mode = "stockfish"
+            ctx.settings.current.smart_engine = True
+            ctx.engines.submit({"fen": fen, "purpose": "evaluate", "depth": 6}, on_done)
 
-    t0 = time.monotonic()
-    while not done.is_set() and time.monotonic() - t0 < 5.0:
+        t0 = time.monotonic()
+        while not done.is_set() and time.monotonic() - t0 < 10.0:
+            ctx.engines.poll()
+            time.sleep(0.05)
         ctx.engines.poll()
-        time.sleep(0.05)
-    ctx.engines.poll()
+    finally:
+        ctx.settings.current.engine_mode = saved_mode
+        ctx.settings.current.smart_engine = saved_smart
 
     py_ok = py_res is not None and py_res.best_uci is not None
     sf_ok = (not ctx.engines.sf_backend.available) or (sf_res is not None and sf_res.best_uci is not None)
 
+    caps = ctx.engines.capabilities()
     summary = {
         "python_engine_ok": py_ok,
         "stockfish_available": ctx.engines.sf_backend.available,
         "stockfish_ok": sf_ok,
         "capabilities": {
-            "stockfish_name": ctx.engines.capabilities().stockfish_name,
-            "smart_engine": ctx.engines.capabilities().smart_engine,
+            "stockfish_name": caps.stockfish_name,
+            "smart_engine": caps.smart_engine,
+            "engine_mode": caps.engine_mode,
+            "custom_max_depth": caps.custom_max_depth,
         },
     }
     print(json.dumps(summary, indent=2))
@@ -196,9 +215,6 @@ def main() -> None:
                     break
                 elif raw_event.type == pygame.KEYDOWN and raw_event.key == pygame.K_F11:
                     ctx.display.toggle_fullscreen()
-                    continue
-                elif raw_event.type == pygame.KEYDOWN and raw_event.key == pygame.K_F2:
-                    ctx.display.toggle_reference(scenes.current_name)
                     continue
 
                 event = ctx.display.translate_event(raw_event)
